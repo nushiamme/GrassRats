@@ -1,25 +1,50 @@
 ## Grass rat sucrose concentration preference test
 
-setwd("E:\\Google Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Piezo_data")
 
+## Read in required packages
+require(plyr)
+require(ggplot2)
+
+## Sew working directory
+setwd("E:\\Google Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data/")
+
+## Read in data files
 conc <- read.csv("SugarConcTest_weights.csv")
 
 #### General functions ####
 my_theme <- theme_classic(base_size = 30) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
 
-## Remove negative values,
-conc_sugar <- conc[conc$Fed_sugar_g>-1,]
+## Calculate amount of sugar consumed
+#conc$prop_sugar <- as.numeric(conc$Sugar_conc)
+conc$Fed_sugar_amt_g <- conc$Fed_sugarsoln_g*conc$Sugar_conc
+conc$sugar_conc_factor<- factor(conc$Sugar_conc, levels=c(0.02, 0.04, 0.06, 0.08, 0.10))
+conc$Indiv <- factor(conc$Indiv, levels=c("N1", "N2", "BK3", "BK4"))
+conc <- arrange(conc, sugar_conc_factor, Indiv)
+
+## Remove negative values, and make separate data frames for sugar and water
+conc_sugar <- conc[conc$Fed_sugar_amt_g>-1,]
 conc_water <- conc[conc$Fed_water_g>-1,]
 
 
-## Plot sugar consumption
-ggplot(subset(conc_sugar, !is.na(Fed_sugar_g)), aes(IndivSugarDay, Fed_sugar_g)) + my_theme + geom_bar(stat="identity", aes(fill=Sugar_conc)) +
+
+## Plot sugar consumption (quantity of sugar in grams)
+ggplot(conc_sugar[conc_sugar$Sugar_mmt_good %in% c("M", "Y"),], aes(IndivSugarDay, Fed_sugar_amt_g)) + 
+  my_theme + geom_bar(stat="identity", aes(fill=sugar_conc_factor)) +
+  scale_fill_hue(h = c(100, 270)) +
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + guides(fill=guide_legend(title="Sugar \nconcentration")) +
+  ylab("Quantity of Sugar consumed (g)") + xlab("Individual_SugarConc_ExptDay")
+
+## Sugar solution consumed
+ggplot(conc_sugar[conc_sugar$Sugar_mmt_good %in% c("M", "Y"),], aes(IndivSugarDay, Fed_sugarsoln_g)) + 
+  my_theme + geom_bar(stat="identity", aes(fill=sugar_conc_factor)) +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + guides(fill=guide_legend(title="Sugar \nconcentration")) +
   ylab("Sugar solution consumed (g)") + xlab("Individual_SugarConc_ExptDay")
 
-ggplot(subset(conc_water, !is.na(Fed_water_g)), aes(IndivSugarDay, Fed_water_g)) + my_theme + geom_bar(stat="identity", aes(fill=Sugar_conc)) +
+
+ggplot(conc_water[conc_water$Water_mmt_good %in% c("M", "Y"),], aes(IndivSugarDay, Fed_water_g)) + my_theme + 
+  geom_bar(stat="identity", aes(fill=sugar_conc_factor)) +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + guides(fill=guide_legend(title="Sugar \nconcentration")) +
   ylab("Water consumed (g)") + xlab("Individual_SugarConc_ExptDay")
