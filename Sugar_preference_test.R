@@ -29,7 +29,7 @@ conc_water <- conc[conc$Fed_water_g>-1,]
 
 
 ## Plot sugar consumption (quantity of sugar in grams)
-sugar_g <- ggplot(conc_sugar[conc_sugar$Sugar_mmt_good %in% c("Y", "M"),], aes(as.factor(Chamber), Fed_sugar_amt_g)) + 
+sugar_g <- ggplot(conc_sugar, aes(as.factor(Chamber), Fed_sugar_amt_g)) + 
   my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + ylim(0,75) +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
@@ -37,7 +37,7 @@ sugar_g <- ggplot(conc_sugar[conc_sugar$Sugar_mmt_good %in% c("Y", "M"),], aes(a
   ylab("Quantity of Sugar consumed (g)") #+ xlab("Individual_SugarConc_ExptDay")
 
 ## Sugar solution consumed
-sugar_soln_g <- ggplot(conc_sugar[conc_sugar$Sugar_mmt_good %in% c("Y", "M"),], aes(as.factor(Chamber), Fed_sugarsoln_g)) + 
+sugar_soln_g <- ggplot(conc_sugar, aes(as.factor(Chamber), Fed_sugarsoln_g)) + 
   my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + ylim(0,75) +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
@@ -45,12 +45,17 @@ sugar_soln_g <- ggplot(conc_sugar[conc_sugar$Sugar_mmt_good %in% c("Y", "M"),], 
   ylab("Sugar solution consumed (g)") #+ xlab("Individual_SugarConc_ExptDay")
 
 
-water_g <- ggplot(conc_water[conc_water$Water_mmt_good %in% c("Y", "M"),], aes(as.factor(Chamber), Fed_water_g)) + my_theme + 
+water_g <- ggplot(conc_water, aes(as.factor(Chamber), Fed_water_g)) + my_theme + 
   geom_bar(stat="identity", aes(fill=Treatment)) + ylim(0,75) +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
   ylab("Water consumed (g)") #+ xlab("Individual_SugarConc_ExptDay")
+
+# Regression of sugar soln vs water
+# Build histogram of sugar and of water and see what are reasonable cut-offs for quantity consumed
+
+
 
 grid.arrange(sugar_soln_g, water_g, nrow=2)
 
