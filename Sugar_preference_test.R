@@ -18,27 +18,68 @@ my_theme <- theme_classic(base_size = 30) +
 ## Calculate amount of sugar consumed
 #conc$prop_sugar <- as.numeric(conc$Sugar_conc)
 conc$Fed_sugar_amt_g <- conc$Fed_sugarsoln_g*conc$Sugar_conc
-conc$sugar_conc_factor<- factor(conc$Sugar_conc, levels=c(0.02, 0.04, 0.06, 0.08, 0.10))
+conc$sugar_conc_factor<- factor(conc$Sugar_conc, levels=c(0, 0.02, 0.04, 0.06, 0.08))
 #conc$Indiv <- factor(conc$Indiv, levels=c("N1", "N2", "BK3", "BK4"))
 conc <- arrange(conc, sugar_conc_factor, Indiv)
 
 ## Remove negative values, and make separate data frames for sugar and water
-conc_sugar <- conc[conc$Fed_sugar_amt_g>-1,]
-conc_water <- conc[conc$Fed_water_g>-1,]
+#conc_sugar <- conc[conc$Fed_sugar_amt_g>-1 & conc$Pre_test=="Test",]
+#conc_water <- conc[conc$Fed_water_g>-1 & conc$Pre_test=="Test",]
+
+## Subset just values from experimental test
+conc <- subset(conc, Pre_test=="Test")
+conc_sugar <- subset(conc, !is.na(Fed_sugarsoln_g))
+conc_water <- subset(conc, !is.na(Fed_water_g))
 
 
-
-## Plot sugar consumption (quantity of sugar in grams)
-sugar_g <- ggplot(conc_sugar, aes(as.factor(Chamber), Fed_sugar_amt_g)) + 
-  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + ylim(0,75) +
-  scale_fill_hue(h = c(100, 270)) +
-  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
+## Plot sugar consumption (quantity of sugar in grams) for 2%
+sugar_g_2 <- ggplot(conc_sugar[conc_sugar$Sugar_conc==0.02,], aes(IndivSugarDay, Fed_sugar_amt_g)) + 
+  facet_grid(.~Treatment, scales="free_x") +
+  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
+  scale_fill_hue(h = c(100, 270)) + 
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5), plot.title = element_text(hjust=0.5)) +
+  theme(legend.position = "none") +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
-  ylab("Quantity of Sugar consumed (g)") #+ xlab("Individual_SugarConc_ExptDay")
+  ylab("Quantity of Sugar consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
+  ggtitle("2% sucrose")
 
+## Plot sugar consumption (quantity of sugar in grams) for 4 and 6%
+sugar_g_4_6 <- ggplot(conc_sugar[conc_sugar$Sugar_conc %in% c(0.04, 0.06),], aes(IndivSugarDay, Fed_sugar_amt_g)) + 
+  facet_grid(sugar_conc_factor~Treatment, scales = "free_x") +
+  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
+  scale_fill_hue(h = c(100, 270)) + 
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5), plot.title = element_text(hjust=0.5)) + 
+  theme(legend.position = "none") +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
+  ylab("Quantity of Sugar consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
+  ggtitle("4% and 6% sucrose")
+
+## Plot sugar solution consumption for 4 and 6%
+sugar_soln_g_4_6 <- ggplot(conc_sugar[conc_sugar$Sugar_conc %in% c(0.04, 0.06),], aes(IndivSugarDay, Fed_sugarsoln_g)) + 
+  facet_grid(sugar_conc_factor~Treatment, scales = "free_x") +
+  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
+  scale_fill_hue(h = c(100, 270)) + 
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5), plot.title = element_text(hjust=0.5)) + 
+  theme(legend.position = "none") +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
+  ylab("Sugar solution consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
+  ggtitle("4% and 6% sucrose")
+
+## Plot water consumption for 4 and 6%
+water_g_4_6 <- ggplot(conc_water[conc_water$Sugar_conc %in% c(0.04, 0.06),], aes(IndivSugarDay, Fed_water_g)) + 
+  facet_grid(sugar_conc_factor~Treatment, scales = "free_x") +
+  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
+  scale_fill_hue(h = c(100, 270)) + 
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5), plot.title = element_text(hjust=0.5)) + 
+  theme(legend.position = "none") +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
+  ylab("Water consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
+  ggtitle("4% and 6% sucrose")
+
+## OLD 
 ## Sugar solution consumed
-sugar_soln_g <- ggplot(conc_sugar, aes(as.factor(Chamber), Fed_sugarsoln_g)) + 
-  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + ylim(0,75) +
+sugar_soln_g <- ggplot(conc, aes(IndivSugarDay, Fed_sugarsoln_g)) + facet_grid(.~sugar_conc_factor) +
+  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
