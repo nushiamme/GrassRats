@@ -31,6 +31,18 @@ conc <- subset(conc, Pre_test=="Test")
 conc_sugar <- subset(conc, !is.na(Fed_sugarsoln_g))
 conc_water <- subset(conc, !is.na(Fed_water_g))
 
+conc_Test <- subset(conc, Pre_test=="Pre")
+
+## Plot sugar consumption (quantity of sugar in grams) for 2%
+sugar_g_2 <- ggplot(conc_Test, aes(IndivSugarDay, Fed_sugar_amt_g)) + 
+  #facet_grid(.~Treatment, scales="free_x") +
+  my_theme + geom_bar(stat="identity") + #ylim(0,75) +
+  scale_fill_hue(h = c(100, 270)) + 
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5), plot.title = element_text(hjust=0.5)) +
+  theme(legend.position = "none") +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
+  ylab("Quantity of Sugar consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
+  ggtitle("2% sucrose")
 
 ## Plot sugar consumption (quantity of sugar in grams) for 2%
 sugar_g_2 <- ggplot(conc_sugar[conc_sugar$Sugar_conc==0.02,], aes(IndivSugarDay, Fed_sugar_amt_g)) + 
