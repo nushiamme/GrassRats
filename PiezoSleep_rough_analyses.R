@@ -19,6 +19,9 @@ anim_sex <- read.csv("Animal_sex.csv")
 piezoday_short <- read.csv("4WeekPhotoperiod_15Apr2019_combined.csv")
 piezoday_long <- read.csv("2WeekAcclimation_20Mar2019.csv")
 
+piezoday_presugar_bouts <- read.csv("4WeekPhotoperiod_15Apr2019_SleepBout_MeanSB.csv")
+piezoday_postsugar_bouts <- read.csv("HighSucrose_andFoamTest_14May2019SleepBout_MeanSB.csv")
+
 ## General functions
 my_theme <- theme_classic(base_size = 25) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
@@ -62,6 +65,32 @@ m.piezoday_long <- melt(piezoday_long, id.vars= c("MOUSE_ID", "TESTDATE"), measu
                                                                                             "PERCENTSLEEPNIGHT6", "PERCENTSLEEPDAY6"))
 
 m.piezobout_short <- rename(m.piezobout_short, replace = c("MOUSE_ID"="GrassRat_ID"))
+
+
+### Processing sleep bout length changes before and after sugar
+m.presugar <- melt(piezoday_presugar_bouts, id.vars="Mouse.IDs.", 
+                   measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
+                                  "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
+m.postsugar <- melt(piezoday_postsugar_bouts, id.vars="Mouse.IDs.", 
+                    measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
+                                   "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
+names(m.presugar) <- c("DateTime", "ID", "Sleep_bout")
+names(m.postsugar) <- c("DateTime", "ID", "Sleep_bout")
+m.presugar$datetime.posix <- as.POSIXct(m.presugar$DateTime, format="%m/%d/%Y %H:%M", tz="GMT")
+m.presugar$date <- as.POSIXct(strptime(m.presugar$DateTime, format="%m/%d/%Y", tz="GMT"))
+
+m.presugar$time <- strftime(m.presugar$datetime.posix, format="%H:%M", tz = "GMT")
+m.presugar$time <- as.POSIXct(m.presugar$time, format="%H:%M", tz = "GMT")
+
+m.presugar$Treatment <- 0
+m.presugar$Treatment[m.presugar$ID %in% c("G9", "G5", "G14", "G16", "G18", "G10", 
+                                        "G8", "G2", "T10", "T5", "T17", "T12")] <- "Short"
+m.presugar$Treatment[m.presugar$ID %in% c("G4", "G1", "G13", "G17", "G19", "G11", "G12", "G3", "T9", 
+                                        "T11", "T19", "T13")] <- "Long"
+
+## Sleeo bout plot
+ggplot(m.presugar, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatment, scales="free_x") + my_theme +
+  ylab("Sleep bout (s)")
 
 
 ## Function to pull the experiment day out of the "variable" column and make it a new one

@@ -12,7 +12,7 @@ require(lmerTest)
 setwd("E:\\Google Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data/")
 
 ## Read in data files
-conc <- read.csv("SugarConcTest_weights_Expt_May27.csv")
+conc <- read.csv("SugarConcTest_weights_Expt_May30.csv")
 
 #### General functions ####
 my_theme <- theme_classic(base_size = 30) + 
@@ -28,6 +28,18 @@ conc$Fed_sugar_amt_g <- conc$Fed_sugarsoln_g*conc$Sugar_conc
 #conc_sugar <- conc[conc$Fed_sugar_amt_g>-1 & conc$Pre_test=="Test",]
 #conc_water <- conc[conc$Fed_water_g>-1 & conc$Pre_test=="Test",]
 
+## Subset 2 and 8%
+conc_2_8 <- conc[conc$Pre_test %in% c("Test_2%", "Test_8%"),]
+conc_2_8$sugar_conc_factor<- factor(conc_8$Sugar_conc, levels=c(0, 0.02, 0.08))
+conc_2_8$Prop_sugar <- conc_2_8$Fed_sugarsoln_g/(conc_2_8$Fed_sugarsoln_g+conc_2_8$Fed_water_g)
+
+
+
+conc_2_8_sugar <- subset(conc_8, !is.na(Fed_sugarsoln_g))
+conc_2_8_sugar <- conc_sugar[conc_sugar$Sugar_mmt_good=="Y",]
+
+conc_2_8_water <- subset(conc_8, !is.na(Fed_water_g))
+conc_2_8_water <- conc_water[conc_water$Water_mmt_good=="Y",]
 
 
 ## Subset just values from experimental test
@@ -107,7 +119,7 @@ water_g_4_6 <- ggplot(conc_water[conc_water$Sugar_conc %in% c(0.04, 0.06),], aes
   ggtitle("4% and 6% sucrose")
 
 ## 8% Sugar solution consumed
-sugar_soln_g <- ggplot(conc_sugar, aes(IndivSugarDay, Fed_sugarsoln_g)) + facet_grid(sugar_conc_factor~., scales="free_x") +
+sugar_soln_g <- ggplot(conc_sugar, aes(IndivSugarDay, Fed_sugarsoln_g)) + facet_grid(sugar_conc_factor~Treatment, scales="free_x") +
   my_theme + geom_boxplot(aes(fill=Treatment)) + #ylim(0,75) +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
@@ -115,7 +127,7 @@ sugar_soln_g <- ggplot(conc_sugar, aes(IndivSugarDay, Fed_sugarsoln_g)) + facet_
   ylab("Sugar solution consumed (g)") #+ xlab("Individual_SugarConc_ExptDay")
 
 water_g <- ggplot(conc_water, aes(IndivSugarDay, Fed_water_g)) + my_theme + 
-  geom_boxplot(aes(fill=Treatment)) + facet_grid(sugar_conc_factor~., scales="free_x") +
+  geom_boxplot(aes(fill=Treatment)) + facet_grid(sugar_conc_factor~Treatment, scales="free_x") +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
@@ -131,28 +143,56 @@ prop_sugar <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(as.factor(Chamber),
   ylab("Proportion sugar soln consumed") #+ xlab("Individual_SugarConc_ExptDay")
 prop_sugar
 
+prop_sugar_2_8 <- ggplot(conc_2_8[!is.na(conc_2_8$Prop_sugar),], aes(as.factor(Chamber), Prop_sugar)) + my_theme + 
+  geom_boxplot(aes(fill=Treatment)) + facet_grid(.~sugar_conc_factor, scales="free_x") +
+  scale_fill_hue(h = c(100, 270)) +
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) +
+  ylab("Proportion sugar soln consumed") #+ xlab("Individual_SugarConc_ExptDay")
+prop_sugar_2_8
+
 # Regression of sugar soln vs water
 ggplot(conc_8, aes(Fed_sugarsoln_g, Fed_water_g)) + geom_point() + geom_smooth(method = "lm")
 
 ggplot(conc_8, aes(as.factor(Chamber), Prop_sugar)) + geom_boxplot(aes(fill=sugar_conc_factor))
 
-
+### INCLUDE RANDOM EFFECT OF INDIVIDUAL ## REPEATED MEASURES OF INDIVIDUALS
 ## Lmer model of proportion of liquid consumed that was sugar solution
-mod_prop_sugar_full <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+(1|Treatment)+(1|Sex), data=conc_8)
+mod_prop_sugar_full <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+(1|Treatment)+(1|Sex) + (1|Indiv) + DaySinceStart, data=conc_8)
 summary(mod_prop_sugar_full)
 plot(mod_prop_sugar)
 
-mod_prop_sugar_noMass <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Sex), data=conc_8)
+mod_prop_sugar_full_noDay <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+(1|Treatment)+(1|Sex) + (1|Indiv), data=conc_8)
+summary(mod_prop_sugar_full_noDay)
+
+mod_prop_sugar_interac <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor*Treatment+(1|Sex) + (1|Indiv), data=conc_8)
+summary(mod_prop_sugar_interac)
+
+mod_prop_sugar_noMass <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Sex) + (1|Indiv), data=conc_8)
 summary(mod_prop_sugar_noMass)
 
 ## Best model
-mod_prop_sugar_noMassSex <- lm(Prop_sugar~sugar_conc_factor+Treatment, data=conc_8)
+mod_prop_sugar_noMassSex <- lmer(Prop_sugar~sugar_conc_factor+Treatment + (1|Indiv), data=conc_8)
 summary(mod_prop_sugar_noMassSex)
+plot(mod_prop_sugar_noMassSex)
+coef(mod_prop_sugar_noMassSex)
+plot(ranef(mod_prop_sugar_noMassSex))
+plot(residuals(mod_prop_sugar_noMassSex))  ## What is index??
 
-mod_prop_sugar_JustSugar <- lm(Prop_sugar~sugar_conc_factor, data=conc_8)
-summary(mod_prop_sugar_noMassSex)
+### RUN model with 2% consumption vs. 8%
+### Consumption across time as a fixed effect - Day of the experiment
+### Date as random effect
 
-anova(mod_prop_sugar_full, mod_prop_sugar_noMass, mod_prop_sugar_noMassSex, mod_prop_sugar_JustSugar)
+mod_2_8 <- lmer(Prop_sugar~conc)
+
+
+mod_prop_sugar_JustSugar <- lmer(Prop_sugar~sugar_conc_factor + (1|Indiv), data=conc_8)
+summary(mod_prop_sugar_JustSugar)
+
+mod_prop_sugar_noIndiv <- lm(Prop_sugar~sugar_conc_factor, data=conc_8) 
+
+anova(mod_prop_sugar_full, mod_prop_sugar_full_noDay, mod_prop_sugar_noMass, mod_prop_sugar_noMassSex, 
+      mod_prop_sugar_JustSugar, mod_prop_sugar_interac, mod_prop_sugar_noIndiv)
 
 
 
