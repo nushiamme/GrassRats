@@ -17,6 +17,7 @@ rms_pre <- read.csv("2WeekAcclimation_26Mar2019_RMS_Day1-7.csv")
 my_theme <- theme_classic(base_size = 30) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
 
+rm(rms, m.rms, agg.rms_indiv, agg.rms_hour, agg.rms)
 process.rms <- function(rms) {
   rms$Hour_Military <- rms$Hour
 
@@ -52,7 +53,7 @@ process.rms <- function(rms) {
                             FUN = function(x) {S=sum(x)/60})
   names(agg.rms_hour) <- c("Individual", "Treatment", "Month", "Day", "Hour", "RMS_hour")
   
-  
+  ### THIS IS PUTTING A CAP ON RMS VALUES
   agg.rms_indiv$RMS_capped <- agg.rms_indiv$RMS_minute_mean
   agg.rms_indiv$RMS_capped[agg.rms_indiv$RMS_minute_mean>4] <- 4
 
@@ -61,9 +62,46 @@ process.rms <- function(rms) {
                        FUN= "mean")
   names(agg.rms) <- c("Treatment", "Month", "Day", "Hour", "Minute", "RMS_minute_mean")
  
+  agg.rms_hour$DayMonth <- as.factor(paste0(agg.rms_hour$Day, "_", agg.rms_hour$Month))
+  for(i in unique(agg.rms_hour$Individual[agg.rms_hour$Treatment=="Long"])) {
+    #windows()
+    #png(file=paste0(i, "_4wk.png"),width = 1500, height=954)
+    ggplot(agg.rms_hour[agg.rms_hour$Individual==i,], aes(as.factor(Hour), DayMonth)) + my_theme + 
+      #facet_grid(Treatment~., scales="free_y") +
+      geom_tile(aes(fill=RMS_hour), stat="identity") +
+      scale_fill_gradient(name="RMS", low="white", high="red", limits=c(0,3.6)) + xlab("Hour") + ylab("Day") +
+      scale_y_discrete(limits=rev(levels(agg.rms_hour$DayMonth))) +
+      #scale_y_reverse(breaks=unique(agg.rms_hour$Day)) + 
+      ggtitle(paste0(i, "_", "Long on 4 week test")) + # CHANGE HERE
+      geom_vline(xintercept=c(5.5,18.5), col="red", size=1) +
+      theme(plot.title = element_text(hjust=0.5), axis.text.x = element_text(size=15))
+    ggsave(paste0(i, "_4wk.png"),width = 10.5, height=6) # CHANGE HERE
+    #dev.off()
+  }
+  
+  
+  for(i in unique(agg.rms_hour$Individual[agg.rms_hour$Treatment=="Short"])) {
+    #windows()
+    #png(file=paste0(i, "_4wk.png"),width = 1500, height=954)
+    ggplot(agg.rms_hour[agg.rms_hour$Individual==i,], aes(as.factor(Hour), DayMonth)) + my_theme + 
+      #facet_grid(Treatment~., scales="free_y") +
+      geom_tile(aes(fill=RMS_hour), stat="identity") +
+      scale_fill_gradient(name="RMS", low="white", high="red", limits=c(0,3.6)) + xlab("Hour") + ylab("Day") +
+      scale_y_discrete(limits=rev(levels(agg.rms_hour$DayMonth))) +
+      #scale_y_reverse(breaks=unique(agg.rms_hour$Day)) + 
+      ggtitle(paste0(i, "_", "Short on 4 week test")) + # CHANGE HERE
+      geom_vline(xintercept=c(9.5,14.5), col="red", size=1) +
+      theme(plot.title = element_text(hjust=0.5), axis.text.x = element_text(size=15))
+    ggsave(paste0(i, "_4wk.png"),width = 10.5, height=6) ## CHANGE HERE
+    #dev.off()``
+  } 
 }
 
-  ## Plotting averages per hour
+process.rms(rms_post)
+
+
+## DON'T USE if this was run in the function
+## Plotting averages per hour
 agg.rms_hour$DayMonth <- as.factor(paste0(agg.rms_hour$Day, "_", agg.rms_hour$Month))
 for(i in unique(agg.rms_hour$Individual[agg.rms_hour$Treatment=="Long"])) {
     #windows()
@@ -74,10 +112,10 @@ for(i in unique(agg.rms_hour$Individual[agg.rms_hour$Treatment=="Long"])) {
       scale_fill_gradient(name="RMS", low="white", high="red", limits=c(0,3.6)) + xlab("Hour") + ylab("Day") +
       scale_y_discrete(limits=rev(levels(agg.rms_hour$DayMonth))) +
     #scale_y_reverse(breaks=unique(agg.rms_hour$Day)) + 
-      ggtitle(paste0(i, "_", "Long on 2 week acclimation")) +
+      ggtitle(paste0(i, "_", "Long on 4 week test")) + # CHANGE HERE
       geom_vline(xintercept=c(5.5,18.5), col="red", size=1) +
       theme(plot.title = element_text(hjust=0.5), axis.text.x = element_text(size=15))
-    ggsave(paste0(i, "_2wk.png"),width = 10.5, height=6)
+    ggsave(paste0(i, "_4wk.png"),width = 10.5, height=6) # CHANGE HERE
     #dev.off()
 }
 
@@ -91,15 +129,14 @@ for(i in unique(agg.rms_hour$Individual[agg.rms_hour$Treatment=="Short"])) {
       scale_fill_gradient(name="RMS", low="white", high="red", limits=c(0,3.6)) + xlab("Hour") + ylab("Day") +
     scale_y_discrete(limits=rev(levels(agg.rms_hour$DayMonth))) +
     #scale_y_reverse(breaks=unique(agg.rms_hour$Day)) + 
-      ggtitle(paste0(i, "_", "Short on 2 week acclimation")) +
+      ggtitle(paste0(i, "_", "Short on 4 week test")) + # CHANGE HERE
       geom_vline(xintercept=c(9.5,14.5), col="red", size=1) +
       theme(plot.title = element_text(hjust=0.5), axis.text.x = element_text(size=15))
-    ggsave(paste0(i, "_2wk.png"),width = 10.5, height=6)
+    ggsave(paste0(i, "_4wk.png"),width = 10.5, height=6) ## CHANGE HERE
     #dev.off()``
 } 
   
 
-process.rms(rms_pre)
 
 
 ggplot(agg.rms_hour[agg.rms_hour$Individual=="G9",], aes(as.factor(Hour), Day)) + my_theme + 

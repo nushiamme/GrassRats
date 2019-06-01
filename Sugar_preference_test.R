@@ -30,15 +30,15 @@ conc$Fed_sugar_amt_g <- conc$Fed_sugarsoln_g*conc$Sugar_conc
 
 ## Subset 2 and 8%
 conc_2_8 <- conc[conc$Pre_test %in% c("Test_2%", "Test_8%"),]
-conc_2_8$sugar_conc_factor<- factor(conc_8$Sugar_conc, levels=c(0, 0.02, 0.08))
+conc_2_8$sugar_conc_factor<- factor(conc_2_8$Sugar_conc, levels=c(0, 0.02, 0.08))
 conc_2_8$Prop_sugar <- conc_2_8$Fed_sugarsoln_g/(conc_2_8$Fed_sugarsoln_g+conc_2_8$Fed_water_g)
 
 
 
-conc_2_8_sugar <- subset(conc_8, !is.na(Fed_sugarsoln_g))
+conc_2_8_sugar <- subset(conc_2_8, !is.na(Fed_sugarsoln_g))
 conc_2_8_sugar <- conc_sugar[conc_sugar$Sugar_mmt_good=="Y",]
 
-conc_2_8_water <- subset(conc_8, !is.na(Fed_water_g))
+conc_2_8_water <- subset(conc_2_8, !is.na(Fed_water_g))
 conc_2_8_water <- conc_water[conc_water$Water_mmt_good=="Y",]
 
 
@@ -150,6 +150,10 @@ prop_sugar_2_8 <- ggplot(conc_2_8[!is.na(conc_2_8$Prop_sugar),], aes(as.factor(C
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
   ylab("Proportion sugar soln consumed") #+ xlab("Individual_SugarConc_ExptDay")
 prop_sugar_2_8
+
+mod_2_8 <- lmer(Prop_sugar~sugar_conc_factor*Treatment+(1|Indiv), data=conc_2_8)
+summary(mod_2_8)
+coef(mod_2_8)
 
 # Regression of sugar soln vs water
 ggplot(conc_8, aes(Fed_sugarsoln_g, Fed_water_g)) + geom_point() + geom_smooth(method = "lm")

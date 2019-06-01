@@ -20,7 +20,7 @@ piezoday_short <- read.csv("4WeekPhotoperiod_15Apr2019_combined.csv")
 piezoday_long <- read.csv("2WeekAcclimation_20Mar2019.csv")
 
 piezoday_presugar_bouts <- read.csv("4WeekPhotoperiod_15Apr2019_SleepBout_MeanSB.csv")
-piezoday_postsugar_bouts <- read.csv("HighSucrose_andFoamTest_14May2019SleepBout_MeanSB.csv")
+piezoday_postsugar_bouts <- read.csv("HighSucrose_22May2019SleepBout_MeanSB.csv")
 
 ## General functions
 my_theme <- theme_classic(base_size = 25) + 
@@ -74,6 +74,7 @@ m.presugar <- melt(piezoday_presugar_bouts, id.vars="Mouse.IDs.",
 m.postsugar <- melt(piezoday_postsugar_bouts, id.vars="Mouse.IDs.", 
                     measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
                                    "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
+
 names(m.presugar) <- c("DateTime", "ID", "Sleep_bout")
 names(m.postsugar) <- c("DateTime", "ID", "Sleep_bout")
 m.presugar$datetime.posix <- as.POSIXct(m.presugar$DateTime, format="%m/%d/%Y %H:%M", tz="GMT")
@@ -88,10 +89,43 @@ m.presugar$Treatment[m.presugar$ID %in% c("G9", "G5", "G14", "G16", "G18", "G10"
 m.presugar$Treatment[m.presugar$ID %in% c("G4", "G1", "G13", "G17", "G19", "G11", "G12", "G3", "T9", 
                                         "T11", "T19", "T13")] <- "Long"
 
-## Sleeo bout plot
+m.postsugar$Treatment <- 0
+m.postsugar$Treatment[m.postsugar$ID %in% c("G9", "G5", "G14", "G16", "G18", "G10", 
+                                          "G8", "G2", "T10", "T5", "T17", "T12")] <- "Short"
+m.postsugar$Treatment[m.postsugar$ID %in% c("G4", "G1", "G13", "G17", "G19", "G11", "G12", "G3", "T9", 
+                                          "T11", "T19", "T13")] <- "Long"
+
+m.presugar$Sugar <- "Pre"
+m.postsugar$Sugar <- "Post"
+
+bound_prepost_sugar <- rbind(m.presugar, m.postsugar)
+
+## Sleep bout plot
 ggplot(m.presugar, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatment, scales="free_x") + my_theme +
   ylab("Sleep bout (s)")
 
+
+ggplot(m.postsugar, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatment, scales="free_x") + my_theme +
+  ylab("Sleep bout (s)")
+
+ggplot(bound_prepost_sugar, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(Sugar~Treatment, scales="free_x") + my_theme +
+  ylab("Sleep bout (s)")
+
+mod_sleepbout_SugarTreatmentIndiv <- lmer(Sleep_bout~Treatment+Sugar+(1|ID), data=bound_prepost_sugar)
+summary(mod_sleepbout_SugarTreatmentIndiv)
+plot(mod_sleepbout_SugarTreatmentIndiv)
+
+mod_sleepbout_SugarIndiv <- lmer(Sleep_bout~Sugar+(1|ID), data=bound_prepost_sugar)
+summary(mod_sleepbout_SugarIndiv)
+plot(mod_sleepbout_SugarIndiv)
+
+mod_sleepbout_Sugar <- lm(Sleep_bout~Sugar, data=bound_prepost_sugar)
+summary(mod_sleepbout_Sugar)
+
+anova(mod_sleepbout_Sugar, mod_sleepbout_SugarIndiv, mod_sleepbout_SugarTreatmentIndiv)
+
+ggplot(bound_prepost_sugar, aes(Sleep_bout)) + geom_histogram() + facet_grid(.~Treatment)
+ggplot(bound_prepost_sugar, aes(Sugar, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatment) + my_theme
 
 ## Function to pull the experiment day out of the "variable" column and make it a new one
 substrRight <- function(x, n){
