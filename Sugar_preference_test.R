@@ -12,7 +12,7 @@ require(lmerTest)
 setwd("E:\\Google Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data/")
 
 ## Read in data files
-conc <- read.csv("SugarConcTest_weights_Expt_May30.csv")
+conc <- read.csv("SugarConcTest_weights_Expt_Jun19.csv")
 
 #### General functions ####
 my_theme <- theme_classic(base_size = 30) + 
@@ -33,13 +33,21 @@ conc_2_8 <- conc[conc$Pre_test %in% c("Test_2%", "Test_8%"),]
 conc_2_8$sugar_conc_factor<- factor(conc_2_8$Sugar_conc, levels=c(0, 0.02, 0.08))
 conc_2_8$Prop_sugar <- conc_2_8$Fed_sugarsoln_g/(conc_2_8$Fed_sugarsoln_g+conc_2_8$Fed_water_g)
 
-
-
 conc_2_8_sugar <- subset(conc_2_8, !is.na(Fed_sugarsoln_g))
-conc_2_8_sugar <- conc_sugar[conc_sugar$Sugar_mmt_good=="Y",]
+conc_2_8_sugar <- conc_2_8_sugar[conc_2_8_sugar$Sugar_mmt_good=="Y",]
 
 conc_2_8_water <- subset(conc_2_8, !is.na(Fed_water_g))
-conc_2_8_water <- conc_water[conc_water$Water_mmt_good=="Y",]
+conc_2_8_water <- conc_2_8_water[conc_2_8_water$Water_mmt_good=="Y",]
+
+## Subset just 2%
+conc_2 <- conc[conc$Pre_test %in% c("Test_2%"),]
+conc_2_sugar <- subset(conc_2, !is.na(Fed_sugarsoln_g))
+conc_2_sugar <- conc_2_sugar[conc_2_sugar$Sugar_mmt_good=="Y",]
+conc_2_water <- subset(conc_2, !is.na(Fed_water_g))
+conc_2_water <- conc_2_water[conc_2_water$Water_mmt_good=="Y",]
+
+conc_2_good <- conc_2[conc_2$Sugar_mmt_good=="Y" & conc_2$Water_mmt_good=="Y",]
+conc_2_good$Prop_sugar <- conc_2_good$Fed_sugarsoln_g/(conc_2_good$Fed_sugarsoln_g+conc_2_good$Fed_water_g)
 
 
 ## Subset just values from experimental test
@@ -54,17 +62,20 @@ ggplot(conc_8[!is.na(conc_8$Fed_water_g),], aes(Fed_water_g)) + geom_histogram(a
   my_theme + ggtitle("Fed water")
 
 
-conc_sugar <- subset(conc_8, !is.na(Fed_sugarsoln_g))
-conc_sugar <- conc_sugar[conc_sugar$Sugar_mmt_good=="Y",]
+conc_8_sugar <- subset(conc_8, !is.na(Fed_sugarsoln_g))
+conc_8_sugar <- conc_sugar[conc_8_sugar$Sugar_mmt_good=="Y",]
 
-conc_water <- subset(conc_8, !is.na(Fed_water_g))
-conc_water <- conc_water[conc_water$Water_mmt_good=="Y",]
+conc_8_water <- subset(conc_8, !is.na(Fed_water_g))
+conc_8_water <- conc_water[conc_8_water$Water_mmt_good=="Y",]
 
 #conc_Pre <- subset(conc, Pre_test=="Pre")
 
+t.test(conc_2_good$Prop_sugar[conc_2_good$Treatment=="Short"],conc_8$Prop_sugar,paired = F)
+
+
 
 ## Plot sugar consumption (quantity of sugar in grams) for 2%
-sugar_g_2 <- ggplot(conc_Test, aes(IndivSugarDay, Fed_sugar_amt_g)) + 
+sugar_g_2 <- ggplot(conc_2, aes(IndivSugarDay, Fed_sugar_amt_g)) + 
   #facet_grid(.~Treatment, scales="free_x") +
   my_theme + geom_bar(stat="identity") + #ylim(0,75) +
   scale_fill_hue(h = c(100, 270)) + 
@@ -74,8 +85,8 @@ sugar_g_2 <- ggplot(conc_Test, aes(IndivSugarDay, Fed_sugar_amt_g)) +
   ylab("Quantity of Sugar consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
   ggtitle("2% sucrose")
 
-## Plot sugar consumption (quantity of sugar in grams) for 2%
-sugar_g_2 <- ggplot(conc_sugar[conc_sugar$Sugar_conc==0.02,], aes(IndivSugarDay, Fed_sugar_amt_g)) + 
+## Plot sugar consumption (quantity of sugar in grams) for 2% by tretament
+sugar_g_2 <- ggplot(conc_2_sugar, aes(IndivSugarDay, Fed_sugar_amt_g)) + 
   facet_grid(.~Treatment, scales="free_x") +
   my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
   scale_fill_hue(h = c(100, 270)) + 
@@ -83,6 +94,40 @@ sugar_g_2 <- ggplot(conc_sugar[conc_sugar$Sugar_conc==0.02,], aes(IndivSugarDay,
   theme(legend.position = "none") +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
   ylab("Quantity of Sugar consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
+  ggtitle("2% sucrose")
+
+## Plot sugar soln consumption for 2% by tretament
+sugar_soln_g_2 <- ggplot(conc_2_sugar, aes(IndivSugarDay, Fed_sugarsoln_g)) + 
+  facet_grid(.~Treatment, scales="free_x") +
+  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
+  scale_fill_hue(h = c(100, 270)) + 
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5), plot.title = element_text(hjust=0.5)) +
+  theme(legend.position = "none") +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
+  ylab("Sugar solution consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
+  ggtitle("2% sucrose")
+
+## Plot water consumption for 2% by tretament
+water_g_2 <- ggplot(conc_2_water, aes(IndivSugarDay, Fed_water_g)) + 
+  facet_grid(.~Treatment, scales="free_x") +
+  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
+  scale_fill_hue(h = c(100, 270)) + 
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5), plot.title = element_text(hjust=0.5)) +
+  theme(legend.position = "none") +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
+  ylab("Water consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
+  ggtitle("Water")
+
+grid.arrange(sugar_soln_g_2, water_g_2, nrow=2)
+
+sugar_prop_g_2 <- ggplot(conc_2_good, aes(IndivSugarDay, Prop_sugar)) + 
+  facet_grid(.~Treatment, scales="free_x") +
+  my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
+  scale_fill_hue(h = c(100, 270)) + 
+  theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5), plot.title = element_text(hjust=0.5)) +
+  theme(legend.position = "none") +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
+  ylab("Proportion of sugar soln consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
   ggtitle("2% sucrose")
 
 ## Plot sugar consumption (quantity of sugar in grams) for 4 and 6%
@@ -151,9 +196,25 @@ prop_sugar_2_8 <- ggplot(conc_2_8[!is.na(conc_2_8$Prop_sugar),], aes(as.factor(C
   ylab("Proportion sugar soln consumed") #+ xlab("Individual_SugarConc_ExptDay")
 prop_sugar_2_8
 
-mod_2_8 <- lmer(Prop_sugar~sugar_conc_factor*Treatment+(1|Indiv), data=conc_2_8)
+mod_2_8_Day <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv)+(1|DaySinceStart), data=conc_2_8)
+
+mod_2_8 <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv), data=conc_2_8)
+
 summary(mod_2_8)
 coef(mod_2_8)
+anova(mod_2_8)
+
+mod_2_8_noIndiv <- lm(Prop_sugar~sugar_conc_factor+Treatment, data=conc_2_8)
+
+mod_2_8_noIndiv_noTreatment <- lm(Prop_sugar~sugar_conc_factor, data=conc_2_8)
+
+## Best model here
+mod_2_8_noTreatment <- lmer(Prop_sugar~sugar_conc_factor+(1|Indiv), data=conc_2_8)
+summary(mod_2_8_noTreatment)
+anova(mod_2_8_noTreatment)
+
+anova(mod_2_8_Day, mod_2_8, mod_2_8_noIndiv, mod_2_8_noIndiv_noTreatment, mod_2_8_noTreatment)
+
 
 # Regression of sugar soln vs water
 ggplot(conc_8, aes(Fed_sugarsoln_g, Fed_water_g)) + geom_point() + geom_smooth(method = "lm")

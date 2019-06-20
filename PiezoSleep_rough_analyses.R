@@ -10,7 +10,7 @@ library(plyr)
 library(gridExtra)
 
 ## Set wd
-setwd("E:\\Google Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Piezo_data")
+setwd("E:\\Ex_Google_Drive\\Piezo_data\\SleepBout_histogram_files/")
 
 
 ## Read in files
@@ -18,6 +18,11 @@ anim_ID <- read.csv("Chamber_Animal_IDs.csv")
 anim_sex <- read.csv("Animal_sex.csv")
 piezoday_short <- read.csv("4WeekPhotoperiod_15Apr2019_combined.csv")
 piezoday_long <- read.csv("2WeekAcclimation_20Mar2019.csv")
+
+bout_histogram_2wk <- read.csv("2WeekAcclimation_26Mar2019SleepBout__histogramSB.csv")
+bout_histogram_4wk <- read.csv("4WeekPhotoperiod_15Apr2019SleepBout__histogramSB.csv")
+bout_histogram_LowSugar <- read.csv("LowSucrose_07May2019SleepBout_2PercentSucrose__histogramSB.csv")
+
 
 piezoday_presugar_bouts <- read.csv("4WeekPhotoperiod_15Apr2019_SleepBout_MeanSB.csv")
 piezoday_postsugar_bouts <- read.csv("HighSucrose_22May2019SleepBout_MeanSB.csv")
@@ -66,6 +71,45 @@ m.piezoday_long <- melt(piezoday_long, id.vars= c("MOUSE_ID", "TESTDATE"), measu
 
 m.piezobout_short <- rename(m.piezobout_short, replace = c("MOUSE_ID"="GrassRat_ID"))
 
+## Processing sleep bout histograms
+## 2 week acclimation
+m.bout_histo_2wk <- melt(bout_histogram_2wk, id.vars="Mouse.IDs.", 
+                         measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
+                                        "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
+names(m.bout_histo_2wk) <- c("BoutLength_sec", "GrassRat_ID", "PercentTime")
+
+ggplot(m.bout_histo_2wk, aes(BoutLength_sec/60, PercentTime)) + geom_line(aes(col=GrassRat_ID)) +
+  my_theme + xlab("Bout length (min)")
+
+## 4 week photoperiod
+m.bout_histo_4wk <- melt(bout_histogram_4wk, id.vars="Mouse.IDs.", 
+                         measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
+                                        "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
+names(m.bout_histo_4wk) <- c("BoutLength_sec", "GrassRat_ID", "PercentTime")
+
+m.bout_histo_4wk$Treatment <- 0
+m.bout_histo_4wk$Treatment[m.bout_histo_4wk$GrassRat_ID %in% c("G9", "G5", "G14", "G16", "G18", "G10", 
+                                          "G8", "G2", "T10", "T5", "T17", "T12")] <- "Short"
+m.bout_histo_4wk$Treatment[m.bout_histo_4wk$GrassRat_ID %in% c("G4", "G1", "G13", "G17", "G19", "G11", "G12", "G3", "T9", 
+                                          "T11", "T19", "T13")] <- "Neutral"
+
+ggplot(m.bout_histo_4wk, aes(BoutLength_sec/60, PercentTime)) + geom_line(aes(col=GrassRat_ID)) + facet_grid(Treatment~.) +
+  my_theme + xlab("Bout length (min)")
+
+## 4 week photoperiod
+m.bout_histo_LowSugar <- melt(bout_histogram_LowSugar, id.vars="Mouse.IDs.", 
+                         measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
+                                        "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
+names(m.bout_histo_LowSugar) <- c("BoutLength_sec", "GrassRat_ID", "PercentTime")
+
+m.bout_histo_LowSugar$Treatment <- 0
+m.bout_histo_LowSugar$Treatment[m.bout_histo_4wk$GrassRat_ID %in% c("G9", "G5", "G14", "G16", "G18", "G10", 
+                                                               "G8", "G2", "T10", "T5", "T17", "T12")] <- "Short"
+m.bout_histo_LowSugar$Treatment[m.bout_histo_4wk$GrassRat_ID %in% c("G4", "G1", "G13", "G17", "G19", "G11", "G12", "G3", "T9", 
+                                                               "T11", "T19", "T13")] <- "Long"
+
+ggplot(m.bout_histo_LowSugar, aes(BoutLength_sec/60, PercentTime)) + geom_line(aes(col=GrassRat_ID)) + facet_grid(Treatment~.) +
+  my_theme + xlab("Bout length (min)")
 
 ### Processing sleep bout length changes before and after sugar
 m.presugar <- melt(piezoday_presugar_bouts, id.vars="Mouse.IDs.", 
@@ -74,6 +118,7 @@ m.presugar <- melt(piezoday_presugar_bouts, id.vars="Mouse.IDs.",
 m.postsugar <- melt(piezoday_postsugar_bouts, id.vars="Mouse.IDs.", 
                     measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
                                    "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
+
 
 names(m.presugar) <- c("DateTime", "ID", "Sleep_bout")
 names(m.postsugar) <- c("DateTime", "ID", "Sleep_bout")
