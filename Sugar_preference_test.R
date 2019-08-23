@@ -11,7 +11,7 @@ require(factoextra)
 require(multcomp)
 
 ## Sew working directory
-setwd("E:\\Google Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data/")
+setwd("E:\\Ex_Google_Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data")
 
 ## Read in data files
 conc <- read.csv("SugarConcTest_weights_Expt_Jun19.csv")
@@ -48,6 +48,9 @@ conc_2_sugar <- subset(conc_2, !is.na(Fed_sugarsoln_g))
 conc_2_sugar <- conc_2_sugar[conc_2_sugar$Sugar_mmt_good=="Y",]
 conc_2_water <- subset(conc_2, !is.na(Fed_water_g))
 conc_2_water <- conc_2_water[conc_2_water$Water_mmt_good=="Y",]
+
+consump_threshold <- ggplot(conc_8, aes(IndivSugarDay, Fed_sugarsoln_g)) + geom_b(aes(fill=Sugar_mmt_good), stat="identity") + my_theme 
+consump_threshold
 
 conc_2_good <- conc_2[conc_2$Sugar_mmt_good=="Y" & conc_2$Water_mmt_good=="Y",]
 conc_2_good$Prop_sugar <- conc_2_good$Fed_sugarsoln_g/(conc_2_good$Fed_sugarsoln_g+conc_2_good$Fed_water_g)
@@ -188,6 +191,7 @@ water_g <- ggplot(conc_water, aes(IndivSugarDay, Fed_water_g)) + my_theme +
 
 grid.arrange(sugar_soln_g, water_g, nrow=2)
 
+
 prop_sugar <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(as.factor(Chamber), Prop_sugar)) + my_theme + 
   geom_boxplot(aes(fill=Treatment)) + facet_grid(.~sugar_conc_factor, scales="free_x") +
   scale_fill_hue(h = c(100, 270)) +
@@ -273,6 +277,7 @@ summary(mod_2_8_noTreatment)
 anova(mod_2_8_noTreatment)
 qqnorm(resid(mod_2_8_noTreatment))
 qqline(resid(mod_2_8_noTreatment))
+coef(mod_2_8_noTreatment)
 
 tmp_sugar <- as.data.frame(confint(glht(mod_2_8_noIndiv_noTreatment))$confint)
 tmp_sugar$Comparison <- rownames(tmp_sugar)

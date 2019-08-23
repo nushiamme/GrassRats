@@ -9,11 +9,10 @@ require(stringr) ## For padding with leading 0's
 require(ggplot2)
 library(behavr)
 library(ggetho)
+library(zeitgebr) ## For periodogram and spectrogram
+library(sleepr) ## For sleep analyses
 
-## General functions
-my_theme <- theme_classic(base_size = 10) + 
-  theme(panel.border = element_rect(colour = "black", fill=NA))
-
+## Set working directory
 setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
 
 ## Metadata file for rethomics behavr table
@@ -21,6 +20,16 @@ meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_ExptPhase1.csv")
 
 meta_activ <- meta_full[,c("Indiv", "Sex", "Photoperiod", "Sugar", "Chamber")]
 
+## General functions
+my_theme <- theme_classic(base_size = 15) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA))
+
+my_theme2 <- theme_classic(base_size = 30) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA))
+
+my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+
+## Get all the required csv's together
 paths <- dir(pattern = "\\.csv$")
 names(paths) <- basename(paths)
 
@@ -55,12 +64,184 @@ for(i in 1:(length(Activ)-1)) {
 }
 m.Activity <- do.call(rbind, m.Activ)
 
-
 m.Activity$Hour2 <- as.numeric(m.Activity$Hour)
 m.Activity$Day2 <- as.numeric(m.Activity$Day)
+m.Activity$Minute <- as.numeric(m.Activity$Minute)
+
+m.Activity$Date <- as.POSIXct(paste(paste(m.Activity$Day2, m.Activity$Month, m.Activity$Year, sep="/"),
+                                    paste(m.Activity$Hour2, m.Activity$Minute, sep=":")), format = "%d/%m/%Y %H:%M")
+
+#dplyr::arrange(m.Activity, Date) # Sort just by date, not my individual
+
+m.Activity <- m.Activity[order(m.Activity$Indiv, m.Activity$Date),]
+head(m.Activity)
+tail(m.Activity)
 
 m.Activity$Treatment <- factor(m.Activity$Treatment, 
                                levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
+
+## for behavr processing
+dt.act <- data.table::data.table(m.Activity, key="Indiv")
+dt.meta <- data.table::data.table(meta_activ, key="Indiv")
+names(dt.act)[names(dt.act) == 'Indiv'] <- 'id'
+names(dt.meta)[names(dt.meta) == 'Indiv'] <- 'id'
+
+beh.act <-behavr(dt.act,metadata = dt.meta)
+beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
+head(beh.act)
+summary(beh.act, detailed=T)
+
+stat_dt <- beh.act[,
+              .(mean_acti = mean(PiezoAct),
+                max_acti = max(PiezoAct)
+              ),
+              by='id']
+stat_dt
+
+
+## Sorting individuals by mean activity levels
+# the average time spent moving per 1000 (rounded)
+mean_piezo_beh <- beh.act[, .(mean_activ = round(mean(PiezoAct) * 1000)), by=id]
+# join curent meta and the summary table
+new_meta <- beh.act[mean_piezo_beh, meta=T]
+# set new metadata
+setmeta(beh.act, new_meta)
+head(beh.act[meta=T])
+head(beh.act)
+
+
+## Trying out a ggetho plot
+ggetho(beh.act, aes(x=t, y=id, z=PiezoAct)) + stat_bar_tile_etho()
+
+## Plotting indivs by mean activity levels
+ggetho(beh.act, aes(x=t, y=interaction(id, mean_activ, sep = " : "), z=PiezoAct)) +
+  stat_tile_etho()
+
+## Sorting by treatment and activity levels now
+ggetho(beh.act, aes(x=t, y=interaction(id, mean_activ, Photoperiod, sep = " : "), z=PiezoAct)) +
+  stat_tile_etho() + my_theme
+
+## Use bars instead of tiles
+ggetho(beh.act, aes(x=t, y=interaction(id, mean_activ, Photoperiod, sep = " : "), z=PiezoAct)) +
+  stat_bar_tile_etho() + my_theme
+
+## Population graphs
+ggetho(beh.act, aes(x=t, y=PiezoAct, color=Photoperiod)) + stat_pop_etho() + facet_grid(Sex~.) + my_theme
+
+##Same behavior over consecutive days, all indivs; excluding 2 week acclim; faceted by photoperiod
+ggetho(beh.act[Treatment != "2WeekAcclimation",], 
+       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + facet_grid(Photoperiod~.) + my_theme
+
+## Same behavior over multiple days, single individual, short
+ggetho(beh.act[Treatment != "2WeekAcclimation" & beh.act$id=="G9"], 
+       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho()  + my_theme
+
+## Same behavior over multiple days, single individual, long
+ggetho(beh.act[beh.act$id=="T13"], 
+       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho()  + my_theme
+
+## Same behavior over multiple days, population-level, as polar coordinates
+ggetho(beh.act, aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = days(1)) + stat_pop_etho(geom='polygon', fill=NA)  + 
+ my_theme + coord_polar()
+
+## Double-plotted actograms
+ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
+
+## Double-plotted actograms by individual
+ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme + facet_wrap(~id)
+
+## For just one individual; long photoperiod
+ggetho(beh.act[beh.act$id=="T13",],
+       aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
+
+## Short photoperiod individual G9 colored by photoperiod FIXXXXX
+ggetho(beh.act[beh.act$id=="G9",],
+       aes(x=t, z=PiezoAct, fill=Photoperiod), multiplot = 2) + stat_bar_tile_etho() + my_theme +
+  scale_fill_manual(values = c('red', 'black'))
+
+## Short photoperiod individual G9
+ggetho(beh.act[beh.act$id=="G9",],
+       aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
+
+## Short photoperiod individual G5
+ggetho(beh.act[beh.act$id=="G5",],
+       aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
+
+## LD in the background
+ggetho(beh.act[beh.act$id=="G9" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(4),phase = hours(10)) +
+  stat_bar_tile_etho() + my_theme
+
+ggetho(dt, aes(x=t, y=moving)) +
+  # the default annotation layer
+  stat_ld_annotations() +
+  # on top of it, a second layer that
+  # starts at day 2 thoughout day 5,
+  # and where L colour is grey
+  stat_ld_annotations(x_limits = days(c(2,5)),
+                      ld_colours = c("grey", "black" )) +
+  stat_pop_etho()
+
+
+## To phase-shift graph
+ggetho(beh.act, aes(x=t, y=PiezoAct), 
+       time_wrap = hours(24),
+       time_offset = hours(6)) + stat_pop_etho() + my_theme
+
+
+## Generate periodogram
+per_dt <- periodogram(PiezoAct, beh.act[Treatment!='2WeekAcclimation',], FUN = chi_sq_periodogram, resample_rate = 1/mins(5))
+per_dt
+## PERIODOGRAM
+ggperio(per_dt, aes(period, power, colour=Photoperiod, fill=Photoperiod)) + 
+  stat_pop_etho() + my_theme2 + theme(legend.key.height = unit(3, 'lines')) + 
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff"))
+
+## PERIODOGRAM by individual
+ggperio(per_dt, aes(period, power, colour=Photoperiod)) + 
+  stat_pop_etho() + facet_wrap(~id) + my_theme
+
+## Identify peaks
+peaks_dt <-find_peaks(per_dt)
+
+## Plot with peaks identified
+ggperio(peaks_dt, aes(period, power, colour=Photoperiod)) + 
+  geom_line() +  geom_peak(colour="blue") + my_theme
+
+## By individual
+ggperio(peaks_dt, aes(period, power, colour=Photoperiod)) + 
+  geom_line() +  geom_peak(colour="blue") +  facet_wrap( ~ id)  + my_theme
+
+## With lines
+ggperio(peaks_dt) + 
+  geom_line(aes(group = id, colour = Photoperiod)) +
+  geom_peak(col = "black") +
+  geom_line(aes(y = signif_threshold)) +
+  facet_wrap(~ id, ncol = 8)
+
+## Generating spectrogram to analyse power NOT WORKING. No 'spectrogram' function seems to exist in zeitgebr
+spect_dt <- spectrogram(PiezoAct,
+                        beh.act,
+                        period_range = c(hours(6), hours(28)))
+
+ggspectro(spect_dt) + 
+  stat_tile_etho() + 
+  scale_y_hours(name= "Period", log=T) + # log axis for period 
+  facet_wrap(~ condition) +
+  stat_ld_annotations()
+
+## Sleep bout analyses
+bout_dt <- bout_analysis(PiezoAct, beh.act[Treatment!="2WeekAcclimation"])
+ggetho(bout_dt, aes(y=duration / 60, colour=Photoperiod), time_wrap = hours(24)) + 
+  stat_pop_etho() + 
+  facet_grid(Photoperiod ~ .) +
+  scale_y_continuous(name= "Bout length (min)") + my_theme
+
+
+### Old
+
+#Actogram faceted by expt trial
 ggplot(m.Activity[m.Activity$Indiv=="G9",], aes(Hour2, Day2)) + my_theme + scale_y_reverse() +
   facet_grid(Treatment+Month~., scales = "free", space="free_y") + geom_tile(aes(fill=PiezoAct)) +
   scale_fill_gradient(name = 'value of\ninterest', low = 'white', high = 'red')
@@ -73,7 +254,6 @@ ggplot(m.Activity[m.Activity$Indiv=="G9",], aes(Hour2, PiezoAct)) + my_theme +
 
 
 
-m.Activity$Minute <- as.numeric(m.Activity$Minute)
 breaks_min <- seq(from = 0,to = 60, by = 10)
 ## Now aggregated in 10-minute bins; can change to 5
 ag <- aggregate(m.Activity$PiezoAct, FUN=mean,
@@ -99,28 +279,8 @@ ggplot(ag_or[ag_or$Indiv=="G17" & ag$Treatment=="4WeekPhotoperiod",], aes(Hour_m
   scale_fill_gradient(name = 'value of\ninterest', low = 'white', high = 'red') +
   theme(axis.text.x = element_text(angle=90, hjust=0.5), panel.spacing.y = unit(0.1, "lines"))
 
-dt.act <- data.table::data.table(m.Activity, key="Indiv")
-dt.meta <- data.table::data.table(meta_activ, key="Indiv")
-names(dt.act)[names(dt.act) == 'Indiv'] <- 'id'
-names(dt.meta)[names(dt.meta) == 'Indiv'] <- 'id'
-
-## for behavr processing
-beh.act <-behavr(dt.act,metadata = dt.meta)
-
-stat_dt <- beh.act[,
-              .(mean_acti = mean(PiezoAct),
-                max_acti = max(PiezoAct)
-              ),
-              by='id']
-stat_dt
 
 
-## Trying out a ggetho plot
-ggetho(beh.act, aes(x=Minute, y=id, z=PiezoAct)) + stat_tile_etho()
-
-
-
-### Old
 
 tomelt <- read.csv("4WeekPhotoperiod_05May2019Actlev.csv")
 
