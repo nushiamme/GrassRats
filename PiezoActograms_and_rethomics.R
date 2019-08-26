@@ -28,7 +28,7 @@ my_theme <- theme_classic(base_size = 15) +
 my_theme2 <- theme_classic(base_size = 30) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
 
-my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+#my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
 
 ## Get all the required csv's together
 paths <- dir(pattern = "\\.csv$")
@@ -63,30 +63,35 @@ for(i in 1:(length(Activ)-1)) {
                                  "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
   names(m.Activ[[i]]) <- c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "Indiv", "PiezoAct")
 }
-m.Activity <- do.call(rbind, m.Activ)
+m.Act <- do.call(rbind, m.Activ)
 
-m.Activity$Hour2 <- as.numeric(m.Activity$Hour)
-m.Activity$Day2 <- as.numeric(m.Activity$Day)
-m.Activity$Minute <- as.numeric(m.Activity$Minute)
+m.Act$Hour2 <- as.numeric(m.Act$Hour)
+m.Act$Day2 <- as.numeric(m.Act$Day)
+m.Act$Minute <- as.numeric(m.Act$Minute)
 
 ## Add date column, without missing rows/times
-m.Activity$Date <- as.POSIXct(paste(paste(m.Activity$Day2, m.Activity$Month, m.Activity$Year, sep="/"),
-                                    paste(m.Activity$Hour2, m.Activity$Minute, sep=":")), 
+m.Act$Date <- as.POSIXct(paste(paste(m.Act$Day2, m.Act$Month, m.Act$Year, sep="/"),
+                                    paste(m.Act$Hour2, m.Act$Minute, sep=":")), 
                               format = "%d/%m/%Y %H:%M", tz="America/Anchorage")
 
-m.Activity <- m.Activity[order(m.Activity$Indiv, m.Activity$Date),]
-head(m.Activity)
-tail(m.Activity)
-m.Activity <- m.Activity[is.na(m.Activity$Date),]
+## Order by individual and date
+m.Act <- m.Act[order(m.Act$Indiv, m.Act$Date),]
+head(m.Act)
+tail(m.Act)
+#m.Act <- m.Act[is.na(m.Act$Date),]
 
-n <- length(m.Activity$Date)
-m.Activity$Time_diff <- 0
-m.Activity$Time_diff[1:n-1] <- m.Activity$Date[2:n]-m.Activity$Date[1:n-1]
-m.Activity$Time_diff[n] <- 5
+## Calculate time difference between rows
+n <- length(m.Act$Date)
+m.Act$Time_diff <- NA
+m.Act$Time_diff[1:n-1] <- m.Act$Date[2:n]-m.Act$Date[1:n-1]
+m.Act$Time_diff[n] <- 5
+head(m.Act)
+## For checking which rows of Time_diff are > 5
+#m.Act$sno <- seq(1:length(m.Act$Date))
 
-m.Activity$sno <- seq(1:length(m.Activity$Date))
+## Create a vector with missing times
+imputed <- as.POSIXct("2019-03-20 00:01:00", format = "%y/%m/%d %H:%M:%S", tz="America/Anchorage")
 
-imputed <- 0
 for(i in 1:length(m.Activity$Time_diff)){
   if(m.Activity$Time_diff[i]>5){
   imp <- seq(min(m.Activity$Date[i]), max(m.Activity$Date[i+1]), 
@@ -94,10 +99,13 @@ for(i in 1:length(m.Activity$Time_diff)){
   imputed <- c(imputed,imp)
   }
 }
+head(imputed) ## Check to see if first value is NA
+imputed <- imputed[-1]
 
-df.time <- data.frame(Date=rep(imputed_time, length(unique(m.Activity$Indiv))), 
-                      Indiv=rep(unique(m.Activity$Indiv), each=length(imputed_time)))
-head(df.time)
+## Create data frame repeating the missing times by the number of individuals, to then merge.
+df.time <- data.frame(Date=rep(imputed, length(unique(m.Activity$Indiv))), 
+                      Indiv=rep(unique(m.Activity$Indiv), each=length(imputed)))
+head(df.time) # Should be a repeating individual column and distinct date column, separated by 5 min
 
 ### IGNORE - old - Trying to make a complete time column, including missing times
 #ts <- seq.POSIXt(as.POSIXct(paste(paste(m.Activity$Day2, m.Activity$Month, m.Activity$Year, sep="/"),
@@ -107,6 +115,7 @@ head(df.time)
 #ts <- seq.POSIXt(as.POSIXlt("2019/03/20 00:00:00", tz="America/Anchorage"), 
  #                as.POSIXlt("2019/06/08 14:48:00",tz="America/Anchorage"), by="5 min")
 
+## To align starting dates to midnight
 ts <- seq.POSIXt(as.POSIXlt("2019/03/20 00:01:00", tz="America/Anchorage"), 
                  as.POSIXlt("2019/03/20 16:26:00",tz="America/Anchorage"), by="5 min")
 #ts <- as.POSIXct(format.POSIXct(ts,'%y/%m/%d %H:%M:%S', tz="America/Anchorage"))
@@ -115,19 +124,20 @@ df_start_time <- data.frame(Date=rep(ts, length(unique(m.Activity$Indiv))), Indi
 head(df_start_time)
 
 df.bound_time <- rbind(df_start_time, df.time)
-
-m.Activity <- full_join(df.bound_time,m.Activity, by=c("Date","Indiv"))
+head(df.bound_time)
+m.Activity <- full_join(df.bound_time,m.Act, by=c("Date","Indiv"))
 head(m.Activity)
 
-#dplyr::arrange(m.Activity, Date) # Sort just by date, not my individual
+# Sort again by indiv and date to be sure
 m.Activity <- m.Activity[order(m.Activity$Indiv, m.Activity$Date),]
 head(m.Activity)
-tail(m.Activity)
 
 #m.Activity <- data_with_missing_times[order(data_with_missing_times$Indiv, data_with_missing_times$Date),]
 
 m.Activity$Treatment <- factor(m.Activity$Treatment, 
                                levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
+
+#m.Activity <- m.Activity[complete.cases(m.Activity),]
 
 ## for behavr processing
 dt.act <- data.table::data.table(m.Activity, key="Indiv")
@@ -179,7 +189,7 @@ ggetho(beh.act, aes(x=t, y=interaction(id, mean_activ, Photoperiod, sep = " : ")
 ## Population graphs
 ggetho(beh.act, aes(x=t, y=PiezoAct, color=Photoperiod)) + stat_pop_etho() + facet_grid(Sex~.) + my_theme
 
-##Same behavior over consecutive days, all indivs; excluding 2 week acclim; faceted by photoperiod
+##Population level, all indivs; excluding 2 week acclim; faceted by photoperiod
 ggetho(beh.act[Treatment != "2WeekAcclimation",], 
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + facet_grid(Photoperiod~.) + my_theme
 
