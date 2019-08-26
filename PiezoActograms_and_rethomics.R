@@ -11,6 +11,7 @@ library(behavr)
 library(ggetho)
 library(zeitgebr) ## For periodogram and spectrogram
 library(sleepr) ## For sleep analyses
+library(dplyr) ## for missing times 
 
 ## Set working directory
 setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
@@ -68,14 +69,62 @@ m.Activity$Hour2 <- as.numeric(m.Activity$Hour)
 m.Activity$Day2 <- as.numeric(m.Activity$Day)
 m.Activity$Minute <- as.numeric(m.Activity$Minute)
 
+## Add date column, without missing rows/times
 m.Activity$Date <- as.POSIXct(paste(paste(m.Activity$Day2, m.Activity$Month, m.Activity$Year, sep="/"),
-                                    paste(m.Activity$Hour2, m.Activity$Minute, sep=":")), format = "%d/%m/%Y %H:%M")
-
-#dplyr::arrange(m.Activity, Date) # Sort just by date, not my individual
+                                    paste(m.Activity$Hour2, m.Activity$Minute, sep=":")), 
+                              format = "%d/%m/%Y %H:%M", tz="America/Anchorage")
 
 m.Activity <- m.Activity[order(m.Activity$Indiv, m.Activity$Date),]
 head(m.Activity)
 tail(m.Activity)
+m.Activity <- m.Activity[is.na(m.Activity$Date),]
+
+n <- length(m.Activity$Date)
+m.Activity$Time_diff <- 0
+m.Activity$Time_diff[1:n-1] <- m.Activity$Date[2:n]-m.Activity$Date[1:n-1]
+m.Activity$Time_diff[n] <- 5
+
+m.Activity$sno <- seq(1:length(m.Activity$Date))
+
+imputed <- 0
+for(i in 1:length(m.Activity$Time_diff)){
+  if(m.Activity$Time_diff[i]>5){
+  imp <- seq(min(m.Activity$Date[i]), max(m.Activity$Date[i+1]), 
+                  by = "5 min")
+  imputed <- c(imputed,imp)
+  }
+}
+
+df.time <- data.frame(Date=rep(imputed_time, length(unique(m.Activity$Indiv))), 
+                      Indiv=rep(unique(m.Activity$Indiv), each=length(imputed_time)))
+head(df.time)
+
+### IGNORE - old - Trying to make a complete time column, including missing times
+#ts <- seq.POSIXt(as.POSIXct(paste(paste(m.Activity$Day2, m.Activity$Month, m.Activity$Year, sep="/"),
+ #                      paste(m.Activity$Hour2, m.Activity$Minute, sep=":")), format = "%d/%m/%Y %H:%M", by="min"))
+
+## Final time format
+#ts <- seq.POSIXt(as.POSIXlt("2019/03/20 00:00:00", tz="America/Anchorage"), 
+ #                as.POSIXlt("2019/06/08 14:48:00",tz="America/Anchorage"), by="5 min")
+
+ts <- seq.POSIXt(as.POSIXlt("2019/03/20 00:01:00", tz="America/Anchorage"), 
+                 as.POSIXlt("2019/03/20 16:26:00",tz="America/Anchorage"), by="5 min")
+#ts <- as.POSIXct(format.POSIXct(ts,'%y/%m/%d %H:%M:%S', tz="America/Anchorage"))
+
+df_start_time <- data.frame(Date=rep(ts, length(unique(m.Activity$Indiv))), Indiv=rep(unique(m.Activity$Indiv), each=length(ts)))
+head(df_start_time)
+
+df.bound_time <- rbind(df_start_time, df.time)
+
+m.Activity <- full_join(df.bound_time,m.Activity, by=c("Date","Indiv"))
+head(m.Activity)
+
+#dplyr::arrange(m.Activity, Date) # Sort just by date, not my individual
+m.Activity <- m.Activity[order(m.Activity$Indiv, m.Activity$Date),]
+head(m.Activity)
+tail(m.Activity)
+
+#m.Activity <- data_with_missing_times[order(data_with_missing_times$Indiv, data_with_missing_times$Date),]
 
 m.Activity$Treatment <- factor(m.Activity$Treatment, 
                                levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
@@ -89,8 +138,10 @@ names(dt.meta)[names(dt.meta) == 'Indiv'] <- 'id'
 beh.act <-behavr(dt.act,metadata = dt.meta)
 beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
 head(beh.act)
+tail(beh.act)
 summary(beh.act, detailed=T)
 
+## IGNORE Summarizing mean and max activity levels
 stat_dt <- beh.act[,
               .(mean_acti = mean(PiezoAct),
                 max_acti = max(PiezoAct)
@@ -101,7 +152,7 @@ stat_dt
 
 ## Sorting individuals by mean activity levels
 # the average time spent moving per 1000 (rounded)
-mean_piezo_beh <- beh.act[, .(mean_activ = round(mean(PiezoAct) * 1000)), by=id]
+mean_piezo_beh <- beh.act[, .(mean_activ = round(mean(PiezoAct, na.rm=T) * 1000)), by=id]
 # join curent meta and the summary table
 new_meta <- beh.act[mean_piezo_beh, meta=T]
 # set new metadata
@@ -109,9 +160,9 @@ setmeta(beh.act, new_meta)
 head(beh.act[meta=T])
 head(beh.act)
 
-
+beh.act <- beh.act[beh.act$PiezoAct != "NA",]
 ## Trying out a ggetho plot
-ggetho(beh.act, aes(x=t, y=id, z=PiezoAct)) + stat_bar_tile_etho()
+ggetho(beh.act, aes(x=t, y=id, z=PiezoAct)) + stat_tile_etho()
 
 ## Plotting indivs by mean activity levels
 ggetho(beh.act, aes(x=t, y=interaction(id, mean_activ, sep = " : "), z=PiezoAct)) +
@@ -154,6 +205,11 @@ ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my
 ggetho(beh.act[beh.act$id=="T13",],
        aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
 
+## LD in the background, long photoperiod T13
+ggetho(beh.act[beh.act$id=="T13" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_bar_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15))
+
 ## Short photoperiod individual G9 colored by photoperiod FIXXXXX
 ggetho(beh.act[beh.act$id=="G9",],
        aes(x=t, z=PiezoAct, fill=Photoperiod), multiplot = 2) + stat_bar_tile_etho() + my_theme +
@@ -184,9 +240,9 @@ ggetho(dt, aes(x=t, y=moving)) +
 
 
 ## To phase-shift graph
-ggetho(beh.act, aes(x=t, y=PiezoAct), 
+ggetho(beh.act, aes(x=t, z=PiezoAct),  
        time_wrap = hours(24),
-       time_offset = hours(6)) + stat_pop_etho() + my_theme
+       time_offset = hours(16.31)) + stat_pop_etho() + my_theme
 
 
 ## Generate periodogram
