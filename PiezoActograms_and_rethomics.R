@@ -83,8 +83,8 @@ tail(m.Act)
 ## Calculate time difference between rows
 n <- length(m.Act$Date)
 m.Act$Time_diff <- NA
-m.Act$Time_diff[1:n-1] <- m.Act$Date[2:n]-m.Act$Date[1:n-1]
-m.Act$Time_diff[n] <- 5
+m.Act$Time_diff[2:n] <- m.Act$Date[2:n]-m.Act$Date[1]
+m.Act$Time_diff[1] <- 0
 head(m.Act)
 ## For checking which rows of Time_diff are > 5
 #m.Act$sno <- seq(1:length(m.Act$Date))
@@ -128,6 +128,8 @@ head(df.bound_time)
 m.Activity <- full_join(df.bound_time,m.Act, by=c("Date","Indiv"))
 head(m.Activity)
 
+m.Activity <- m.Act[order(m.Act$Indiv, m.Act$Date),]
+
 # Sort again by indiv and date to be sure
 m.Activity <- m.Activity[order(m.Activity$Indiv, m.Activity$Date),]
 head(m.Activity)
@@ -146,7 +148,8 @@ names(dt.act)[names(dt.act) == 'Indiv'] <- 'id'
 names(dt.meta)[names(dt.meta) == 'Indiv'] <- 'id'
 
 beh.act <-behavr(dt.act,metadata = dt.meta)
-beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
+beh.act$t <- beh.act$Time_diff
+#beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
 head(beh.act)
 tail(beh.act)
 summary(beh.act, detailed=T)
@@ -202,8 +205,13 @@ ggetho(beh.act[beh.act$id=="T13"],
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho()  + my_theme
 
 ## Same behavior over multiple days, population-level, as polar coordinates
+## DO THIS WITH JUST LAST WEEK of 4-week and of high sucrose
 ggetho(beh.act, aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = days(1)) + stat_pop_etho(geom='polygon', fill=NA)  + 
- my_theme + coord_polar()
+ my_theme + coord_polar() +
+  stat_ld_annotations(height=.5,
+                      alpha=.2,
+                      x_limits = c(0, days(1)),
+                      outline = NA)
 
 ## Double-plotted actograms
 ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
@@ -217,7 +225,7 @@ ggetho(beh.act[beh.act$id=="T13",],
 
 ## LD in the background, long photoperiod T13
 ggetho(beh.act[beh.act$id=="T13" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
-  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(12),phase = hours(13.29)) +
   stat_bar_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15))
 
 ## Short photoperiod individual G9 colored by photoperiod FIXXXXX
@@ -235,7 +243,7 @@ ggetho(beh.act[beh.act$id=="G5",],
 
 ## LD in the background
 ggetho(beh.act[beh.act$id=="G9" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
-  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(4),phase = hours(10)) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(4),phase = hours(17.29)) +
   stat_bar_tile_etho() + my_theme
 
 ggetho(dt, aes(x=t, y=moving)) +
