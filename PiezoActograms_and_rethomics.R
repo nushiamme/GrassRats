@@ -12,6 +12,7 @@ library(ggetho)
 library(zeitgebr) ## For periodogram and spectrogram
 library(sleepr) ## For sleep analyses
 library(dplyr) ## for missing times 
+library(DataCombine) # To insert rows at specific locations in dataframe
 
 ## Set working directory
 setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
@@ -82,6 +83,11 @@ tail(m.Act)
 
 ## Calculate time difference between rows
 n <- length(m.Act$Date)
+#m.Act <- InsertRow(m.Act, rep(NA,ncol(m.Act)), 1)
+#m.Act$Date[1] <- as.POSIXct(paste(paste(m.Act$Day2[2], m.Act$Month[2], m.Act$Year[2], sep="/"), 
+                         # "00:00:01"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+## STILL NEED TO FIGURE THIS OUT
+head(m.Act)
 m.Act$Time_diff <- NA
 m.Act$Time_diff[2:n] <- m.Act$Date[2:n]-m.Act$Date[1]
 m.Act$Time_diff[1] <- 0
@@ -236,6 +242,7 @@ ggetho(beh.act[beh.act$id=="G9",],
 ## Short photoperiod individual G9
 ggetho(beh.act[beh.act$id=="G9",],
        aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
+  scale_x_continuous(breaks =seq(0,48,3))
 
 ## Short photoperiod individual G5
 ggetho(beh.act[beh.act$id=="G5",],

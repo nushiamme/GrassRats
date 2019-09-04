@@ -305,6 +305,7 @@ m.piezoday_4wksugars$ExptDay <- substrRight(as.character(m.piezoday_4wksugars$va
 m.piezobout_4wksugars$ExptDay <- substrRight(as.character(m.piezobout_4wksugars$variable), 1)
 m.piezoday_long$ExptDay <- substrRight(as.character(m.piezoday_long$variable), 1)
 m.piezobout_long$ExptDay <- substrRight(as.character(m.piezobout_long$variable), 1)
+m.piezoday_short2$ExptDay <- substrRight(as.character(m.piezoday_short2$variable), 1)
 
 ## To extract what the measure is
 substrLeft <- function(x, n){
@@ -314,6 +315,7 @@ m.piezoday_4wksugars$Measure <- substrLeft(as.character(m.piezoday_4wksugars$var
 m.piezobout_4wksugars$Measure <- substrLeft(as.character(m.piezobout_4wksugars$variable), 1)
 m.piezoday_long$Measure <- substrLeft(as.character(m.piezoday_long$variable), 1)
 m.piezobout_long$Measure <- substrLeft(as.character(m.piezobout_long$variable), 1)
+m.piezoday_short2$Measure <- substrLeft(as.character(m.piezoday_short2$variable), 1)
 
 
 ## Day or night column
@@ -331,6 +333,9 @@ m.piezoday_long$DayNightTot<- revalue(as.factor(m.piezoday_long$DayNightTot),c("
 
 m.piezobout_long$DayNightTot <- substrMid(as.character(m.piezobout_long$Measure))
 m.piezobout_long$DayNightTot<- revalue(as.factor(m.piezobout_long$DayNightTot),c("ITE"="Night", "TOT" = "Total", "DAY" = "Day"))
+
+m.piezoday_short2$DayNightTot <- substrMid(as.character(m.piezoday_short2$Measure))
+m.piezoday_short2$DayNightTot<- revalue(as.factor(m.piezoday_short2$DayNightTot),c("GHT"="Night", "TOT" = "Total", "DAY" = "Day"))
 
 
 

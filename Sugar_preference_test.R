@@ -15,6 +15,17 @@ setwd("E:\\Ex_Google_Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Ani
 
 ## Read in data files
 conc <- read.csv("SugarConcTest_weights_Expt_Jun19.csv")
+liver <- read.csv("Liver_fat.csv")
+
+mod_liver <- lm(Liver_fat~Photoperiod*Sugar_conc, liver)
+anova(mod_liver)
+summary(mod_liver)
+plot(mod_liver)
+coef(mod_liver)
+plot(residuals(mod_liver))
+
+liver_cut <- liver[!is.na(liver$Liver_fat),]
+ggplot(liver_cut, aes(Photoperiod, Liver_fat, fill=Sugar_conc)) + geom_boxplot(alpha=0.8) + my_theme
 
 #### General functions ####
 my_theme <- theme_classic(base_size = 30) + 
