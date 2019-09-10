@@ -4,7 +4,7 @@ require(reshape2)
 #require(wmtsa)
 #require(waveslim)
 #require(biwavelet)
-require(stringr) ## For padding with leading 0's
+#require(stringr) ## For padding with leading 0's
 
 require(ggplot2)
 library(behavr)
@@ -13,14 +13,19 @@ library(zeitgebr) ## For periodogram and spectrogram
 library(sleepr) ## For sleep analyses
 library(dplyr) ## for missing times 
 library(DataCombine) # To insert rows at specific locations in dataframe
+library(viridis) # for beautiful colors!
 
 ## Set working directory
 setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
+
+source("Spectrogram.R")
 
 ## Metadata file for rethomics behavr table
 meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_ExptPhase1.csv")
 
 meta_activ <- meta_full[,c("Indiv", "Sex", "Photoperiod", "Sugar", "Chamber")]
+
+m.Act <- read.csv(".\\Melted\\Melted_PiezoActivity_Phase1_new.csv") 
 
 ## General functions
 my_theme <- theme_classic(base_size = 15) + 
@@ -31,10 +36,11 @@ my_theme2 <- theme_classic(base_size = 30) +
 
 #my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
 
+#### Ignore if reading in Melted activity csv; only run to re-process raw data ####
 ## Get all the required csv's together
 paths <- dir(pattern = "\\.csv$")
 names(paths) <- basename(paths)
-
+paths
 Activ <- lapply(paths, read.csv, header=T)
 
 #Activsumm <- data.frame(matrix(NA, nrow=length(Activ), ncol=25))
@@ -47,6 +53,7 @@ for(i in 1:(length(Activ)-1)) {
     unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 1))
   Activ[[i]]$FileDate <- 
     unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 2))
+  #Activ[[i]][[1]] <- gsub('-', '/', Activ[[i]][[1]])
   Activ[[i]]$Month <-
     unlist(lapply(strsplit(as.character(Activ[[i]][[1]]), "/"), "[", 1))
   Activ[[i]]$Day <-
@@ -81,92 +88,74 @@ head(m.Act)
 tail(m.Act)
 #m.Act <- m.Act[is.na(m.Act$Date),]
 
+write.csv(m.Act,"Melted\\Melted_PiezoActivity_Phase1.csv", row.names=F)
+
+
+#### Organizing time and date column ####
+## Do this again so that factor is converted back to POSIXct
+## Add date column, without missing rows/times
+m.Act$Date <- as.POSIXct(paste(paste(m.Act$Day2, m.Act$Month, m.Act$Year, sep="/"),
+                               paste(m.Act$Hour2, m.Act$Minute, sep=":")), 
+                         format = "%d/%m/%Y %H:%M", tz="America/Anchorage")
+
 ## Calculate time difference between rows
 n <- length(m.Act$Date)
 #m.Act <- InsertRow(m.Act, rep(NA,ncol(m.Act)), 1)
 #m.Act$Date[1] <- as.POSIXct(paste(paste(m.Act$Day2[2], m.Act$Month[2], m.Act$Year[2], sep="/"), 
                          # "00:00:01"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-## STILL NEED TO FIGURE THIS OUT
 head(m.Act)
 m.Act$Time_diff <- NA
 m.Act$Time_diff[2:n] <- m.Act$Date[2:n]-m.Act$Date[1]
 m.Act$Time_diff[1] <- 0
 head(m.Act)
+
+## To make Time_diff column think 0 = midnight of the start date
+Day_start <- as.POSIXct(paste(paste(m.Act$Day2[1], m.Act$Month[1], m.Act$Year[1], sep="/"), 
+                                   "00:00:00"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+time_diff_from_start <- as.numeric(60*60*(m.Act$Date[1]- Day_start)) ## Convert hours to seconds
+
+m.Act$Time_diff2 <- m.Act$Time_diff+time_diff_from_start
 ## For checking which rows of Time_diff are > 5
 #m.Act$sno <- seq(1:length(m.Act$Date))
 
-## Create a vector with missing times
-imputed <- as.POSIXct("2019-03-20 00:01:00", format = "%y/%m/%d %H:%M:%S", tz="America/Anchorage")
-
-for(i in 1:length(m.Activity$Time_diff)){
-  if(m.Activity$Time_diff[i]>5){
-  imp <- seq(min(m.Activity$Date[i]), max(m.Activity$Date[i+1]), 
-                  by = "5 min")
-  imputed <- c(imputed,imp)
-  }
-}
-head(imputed) ## Check to see if first value is NA
-imputed <- imputed[-1]
-
-## Create data frame repeating the missing times by the number of individuals, to then merge.
-df.time <- data.frame(Date=rep(imputed, length(unique(m.Activity$Indiv))), 
-                      Indiv=rep(unique(m.Activity$Indiv), each=length(imputed)))
-head(df.time) # Should be a repeating individual column and distinct date column, separated by 5 min
-
-### IGNORE - old - Trying to make a complete time column, including missing times
-#ts <- seq.POSIXt(as.POSIXct(paste(paste(m.Activity$Day2, m.Activity$Month, m.Activity$Year, sep="/"),
- #                      paste(m.Activity$Hour2, m.Activity$Minute, sep=":")), format = "%d/%m/%Y %H:%M", by="min"))
-
-## Final time format
-#ts <- seq.POSIXt(as.POSIXlt("2019/03/20 00:00:00", tz="America/Anchorage"), 
- #                as.POSIXlt("2019/06/08 14:48:00",tz="America/Anchorage"), by="5 min")
-
-## To align starting dates to midnight
-ts <- seq.POSIXt(as.POSIXlt("2019/03/20 00:01:00", tz="America/Anchorage"), 
-                 as.POSIXlt("2019/03/20 16:26:00",tz="America/Anchorage"), by="5 min")
-#ts <- as.POSIXct(format.POSIXct(ts,'%y/%m/%d %H:%M:%S', tz="America/Anchorage"))
-
-df_start_time <- data.frame(Date=rep(ts, length(unique(m.Activity$Indiv))), Indiv=rep(unique(m.Activity$Indiv), each=length(ts)))
-head(df_start_time)
-
-df.bound_time <- rbind(df_start_time, df.time)
-head(df.bound_time)
-m.Activity <- full_join(df.bound_time,m.Act, by=c("Date","Indiv"))
-head(m.Activity)
-
-m.Activity <- m.Act[order(m.Act$Indiv, m.Act$Date),]
-
-# Sort again by indiv and date to be sure
-m.Activity <- m.Activity[order(m.Activity$Indiv, m.Activity$Date),]
-head(m.Activity)
-
 #m.Activity <- data_with_missing_times[order(data_with_missing_times$Indiv, data_with_missing_times$Date),]
 
+m.Activity <- m.Act
 m.Activity$Treatment <- factor(m.Activity$Treatment, 
                                levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
+anim_cham <- meta_full[,c("Indiv", "Chamber")]
+m.Activity <- merge(m.Activity,anim_cham,by="Indiv")
+m.Activity <- m.Activity[order(m.Activity$Chamber, m.Activity$Date),]
+head(m.Activity)
+
 
 #m.Activity <- m.Activity[complete.cases(m.Activity),]
 
 ## for behavr processing
-dt.act <- data.table::data.table(m.Activity, key="Indiv")
-dt.meta <- data.table::data.table(meta_activ, key="Indiv")
-names(dt.act)[names(dt.act) == 'Indiv'] <- 'id'
-names(dt.meta)[names(dt.meta) == 'Indiv'] <- 'id'
+dt.act <- data.table::data.table(m.Activity, key='Chamber')
+names(dt.act)[names(dt.act) == 'Chamber'] <- 'id'
+
+#dt.act <- dt.act[order(dt.act$Chamber,dt.act$Date)]
+dt.meta <- data.table::data.table(meta_activ, key="Chamber")
+
+names(dt.meta)[names(dt.meta) == 'Chamber'] <- 'id'
 
 beh.act <-behavr(dt.act,metadata = dt.meta)
-beh.act$t <- beh.act$Time_diff
+beh.act$t <- beh.act$Time_diff2
 #beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
+summary(beh.act, detailed=T)
+#beh.act <- beh.act[order(beh.act$Chamber,beh.act$Date)]
 head(beh.act)
 tail(beh.act)
-summary(beh.act, detailed=T)
+
 
 ## IGNORE Summarizing mean and max activity levels
-stat_dt <- beh.act[,
-              .(mean_acti = mean(PiezoAct),
-                max_acti = max(PiezoAct)
-              ),
-              by='id']
-stat_dt
+#stat_dt <- beh.act[,
+ #             .(mean_acti = mean(PiezoAct),
+  #              max_acti = max(PiezoAct)
+   #           ),
+    #          by='id']
+#stat_dt
 
 
 ## Sorting individuals by mean activity levels
@@ -179,7 +168,7 @@ setmeta(beh.act, new_meta)
 head(beh.act[meta=T])
 head(beh.act)
 
-beh.act <- beh.act[beh.act$PiezoAct != "NA",]
+#beh.act <- beh.act[beh.act$PiezoAct != "NA",]
 ## Trying out a ggetho plot
 ggetho(beh.act, aes(x=t, y=id, z=PiezoAct)) + stat_tile_etho()
 
@@ -202,13 +191,72 @@ ggetho(beh.act, aes(x=t, y=PiezoAct, color=Photoperiod)) + stat_pop_etho() + fac
 ggetho(beh.act[Treatment != "2WeekAcclimation",], 
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + facet_grid(Photoperiod~.) + my_theme
 
-## Same behavior over multiple days, single individual, short
-ggetho(beh.act[Treatment != "2WeekAcclimation" & beh.act$id=="G9"], 
+
+##Population level, all indivs; just the "expt" values; faceted by photoperiod, just 2wk
+p.pop_2wk <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="2WeekAcclimation",], 
+       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme + ggtitle("2 week Acclimation") + ylim(0,3) + 
+  theme(axis.text.x = element_blank(), legend.position = "none") + xlab("")
+
+##Population level, all indivs; just the "expt" values; faceted by photoperiod, just 4wk
+p.pop_4wk <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="4WeekPhotoperiod",], 
+       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme + ggtitle("4 week photoperiod") + ylim(0,3) + theme(axis.text.x = element_blank()) + xlab("")
+
+##Population level, all indivs; just the "expt" values; faceted by photoperiod, just high sucrose
+p.pop_HCS <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], 
+       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme  + ggtitle("High Sucrose") + ylim(0,3)
+
+grid.arrange(p.pop_2wk, p.pop_4wk,p.pop_HCS, ncol=1, nrow=3)
+
+##Population level, all indivs; just the "expt" values; colored by photoperiod, just high sucrose
+# Viridis colors c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], 
+                    aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24)) + 
+  stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme  + ggtitle("High Sucrose") + ylim(0,3) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff"))
+
+##Population level, all short photoperiod indivs; just last week of high sucrose
+pop_short_HCS <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose" & beh.act$id<13,], 
+       aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24), 
+       time_offset = hours(4)) + 
+  stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme  + ggtitle("High Sucrose") + ylim(0,3) + 
+  scale_color_manual(values = "#23988aff") +
+  scale_fill_manual(values = "#23988aff")
+
+
+##Population level, all short photoperiod indivs; just last week of high sucrose
+pop_long_HCS <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose" & beh.act$id>12,], 
+       aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24)) + 
+  stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme  + ggtitle("High Sucrose") + ylim(0,3) +
+  scale_color_manual(values = "#F38BA8") +
+  scale_fill_manual(values = "#F38BA8")
+
+grid.arrange(pop_short_HCS, pop_long_HCS)
+
+## Population graph single individual, short
+pop_short_indiv <- ggetho(beh.act[Treatment != "2WeekAcclimation" & beh.act$id=="2"], 
+       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho()  + my_theme +
+  scale_color_manual(values="blue")
+
+## Population graph, single individual, long
+pop_long_indiv <- ggetho(beh.act[Treatment != "2WeekAcclimation" & beh.act$id=="24"], 
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho()  + my_theme
 
-## Same behavior over multiple days, single individual, long
-ggetho(beh.act[beh.act$id=="T13"], 
-       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho()  + my_theme
+grid.arrange(pop_short_indiv, pop_long_indiv)
+
+#Now phase shifted to activity onset
+pop_short_indiv_shift <- ggetho(beh.act[Treatment != "2WeekAcclimation" & beh.act$id=="2"], 
+                          aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24),
+                          time_offset = hours(4)) + stat_pop_etho()  + my_theme +
+  scale_color_manual(values="blue")
+
+grid.arrange(pop_short_indiv_shift, pop_long_indiv)
 
 ## Same behavior over multiple days, population-level, as polar coordinates
 ## DO THIS WITH JUST LAST WEEK of 4-week and of high sucrose
@@ -219,38 +267,153 @@ ggetho(beh.act, aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = days(1)) + st
                       x_limits = c(0, days(1)),
                       outline = NA)
 
+## For just 4 week, expt phase
+ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="4WeekPhotoperiod",], aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = days(1)) + stat_pop_etho(geom='polygon', fill=NA)  + 
+  my_theme + coord_polar() +
+  stat_ld_annotations(height=.5, alpha=.2, x_limits = c(0, days(1)), outline = NA)
+
+## For just high sucrose, expt phase
+ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = days(1)) + stat_pop_etho(geom='polygon', fill=NA)  + 
+  my_theme + coord_polar() +
+  stat_ld_annotations(height=.5, alpha=.2, x_limits = c(0, days(1)), outline = NA)
+
+
 ## Double-plotted actograms
 ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
 
-## Double-plotted actograms by individual
-ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme + facet_wrap(~id)
 
-## For just one individual; long photoperiod
-ggetho(beh.act[beh.act$id=="T13",],
-       aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
+## Double-plotted actograms by individual
+ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme + 
+  facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
+
+## VERY NICE For all individuals
+## Double-plotted actograms by individual, tiles, viridis
+## Only x-labels every 6 hours; 3 is too crammed
+ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+  facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
+  scale_fill_viridis()
+
+## VERY NICE For all short photoperiod indivs
+## Double-plotted actograms by individual, tiles, viridis
+## Only x-labels every 6 hours; 3 is too crammed
+ggetho(beh.act[beh.act$id<13,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+  facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
+  scale_fill_viridis()
+
+## VERY NICE For all long photoperiod indivs
+## Double-plotted actograms by individual, tiles, viridis
+## Only x-labels every 6 hours; 3 is too crammed
+ggetho(beh.act[beh.act$id>12,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+  facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
+  scale_fill_viridis()
+
+
+## For just one individual, T13; long photoperiod
+ggetho(beh.act[beh.act$id=="24",],
+       aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho(fill="red") + my_theme +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
 
 ## LD in the background, long photoperiod T13
-ggetho(beh.act[beh.act$id=="T13" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
-  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(12),phase = hours(13.29)) +
+ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(12),phase = hours(6)) +
   stat_bar_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15))
 
-## Short photoperiod individual G9 colored by photoperiod FIXXXXX
-ggetho(beh.act[beh.act$id=="G9",],
-       aes(x=t, z=PiezoAct, fill=Photoperiod), multiplot = 2) + stat_bar_tile_etho() + my_theme +
-  scale_fill_manual(values = c('red', 'black'))
+## OVERALL viridis, Tiled, long photoperiod T13
+ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## Just the "expt" section of 2wk, Tiled, long photoperiod T13
+ggetho(beh.act[beh.act$id=="24" & beh.act$Prep_expt=="expt" & beh.act$Treatment=="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3)) 
+
+## Just the "expt" section of 4wk, Tiled, long photoperiod T13
+ggetho(beh.act[beh.act$id=="24" & beh.act$Prep_expt=="expt" & beh.act$Treatment=="4WeekPhotoperiod",], aes(x=t, z=PiezoAct), multiplot=2) +
+  #stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3)) 
+
+## Just the "expt" section of low sucrose, Tiled, long photoperiod T13
+ggetho(beh.act[beh.act$id=="24" & beh.act$Prep_expt=="expt" & beh.act$Treatment=="LowSucrose",], aes(x=t, z=PiezoAct), multiplot=2) +
+  #stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## Just the "expt" section of high sucrose, Tiled, long photoperiod T13
+ggetho(beh.act[beh.act$id=="24" & beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], aes(x=t, z=PiezoAct), multiplot=2) +
+  #stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
 
 ## Short photoperiod individual G9
-ggetho(beh.act[beh.act$id=="G9",],
-       aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
-  scale_x_continuous(breaks =seq(0,48,3))
+ggetho(beh.act[beh.act$id=="1",],aes(x=t, z=PiezoAct), multiplot = 2) + 
+  stat_bar_tile_etho() + my_theme +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## Short photoperiod individual G9, tiles, viridis
+ggetho(beh.act[beh.act$id=="1",],aes(x=t, z=PiezoAct), multiplot = 2) + 
+  stat_tile_etho() + my_theme +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## OVERALL Tiled, short photoperiod G5
+ggetho(beh.act[beh.act$id=="2",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## Just the "expt" section of 2wk, Tiled, short photoperiod G2
+ggetho(beh.act[beh.act$id=="2" & beh.act$Prep_expt=="expt" & beh.act$Treatment=="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3)) 
+
+## Just the "expt" section of 4wk, Tiled, short photoperiod G2
+ggetho(beh.act[beh.act$id=="2" & beh.act$Prep_expt=="expt" & beh.act$Treatment=="4WeekPhotoperiod",], aes(x=t, z=PiezoAct), multiplot=2) +
+  #stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3)) 
+
+## Just the "expt" section of high sucrose, Tiled, short photoperiod G2
+ggetho(beh.act[beh.act$id=="2" & beh.act$Treatment=="HighSucrose",], aes(x=t, z=PiezoAct), multiplot=2) +
+  #stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
 
 ## Short photoperiod individual G5
-ggetho(beh.act[beh.act$id=="G5",],
+ggetho(beh.act[beh.act$id=="2",],
        aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
 
+## Short photoperiod individual G5, tiles, viridis
+ggetho(beh.act[beh.act$id=="2",],aes(x=t, z=PiezoAct), multiplot = 2) + 
+  stat_tile_etho() + my_theme +
+  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
 ## LD in the background
-ggetho(beh.act[beh.act$id=="G9" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
-  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(4),phase = hours(17.29)) +
+ggetho(beh.act[beh.act$id=="1" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(4),phase = hours(10)) +
   stat_bar_tile_etho() + my_theme
 
 ggetho(dt, aes(x=t, y=moving)) +
@@ -304,7 +467,7 @@ ggperio(peaks_dt) +
 ## Generating spectrogram to analyse power NOT WORKING. No 'spectrogram' function seems to exist in zeitgebr
 spect_dt <- spectrogram(PiezoAct,
                         beh.act,
-                        period_range = c(hours(6), hours(28)))
+                        period_range = c(hours(6), hours(24)))
 
 ggspectro(spect_dt) + 
   stat_tile_etho() + 
@@ -334,51 +497,42 @@ ggplot(m.Activity[m.Activity$Indiv=="G9",], aes(Hour2, PiezoAct)) + my_theme +
 #Test <- m.Activity[m.Activity$Indiv=="G9" & m.Activity$Treatment=="LowSucrose",]
 
 
+#### OLD DATE FORMATTING IGNORE ####
+## Create a vector with missing times
+imputed <- as.POSIXct("2019-03-20 00:01:00", format = "%y/%m/%d %H:%M:%S", tz="America/Anchorage")
 
-breaks_min <- seq(from = 0,to = 60, by = 10)
-## Now aggregated in 10-minute bins; can change to 5
-ag <- aggregate(m.Activity$PiezoAct, FUN=mean,
-                by=list(Indiv=m.Activity$Indiv, Treatment = m.Activity$Treatment, Day= m.Activity$Day2, 
-                        Month= m.Activity$Month, Year= m.Activity$Year, Hour = m.Activity$Hour2, 
-                        Minute=cut(m.Activity$Minute, breaks_min, include.lowest=T)))
-names(ag)[names(ag) == 'x'] <- 'PiezoAct'
-
-ag$Minute2 <- ag$Minute
-levels(ag$Minute2) <- c(seq(0,50,10))
-ag$Minute2<- str_pad(ag$Minute2, 2, pad = "0")
-ag$Hour<- str_pad(ag$Hour, 2, pad = "0")
-ag$Hour_min <- paste0(ag[,"Hour"],":",ag[,"Minute2"])
-ag$Minute2 <- as.numeric(as.character(ag$Minute2))
-
-
-#ag_or <- ag[with(ag, order(as.numeric(Month), Day, Hour, Minute2, Indiv)),]
-#ag_or$Hour_min2<- factor(ag_or$Hour_min, levels = unique(ag_or$Hour_min), ordered=T)
-
-ggplot(ag_or[ag_or$Indiv=="G17" & ag$Treatment=="4WeekPhotoperiod",], aes(Hour_min, PiezoAct)) + my_theme + #scale_y_reverse() +
-  facet_grid(Month+Day~., scales = "free") + 
-  geom_bar(stat = "identity") +
-  scale_fill_gradient(name = 'value of\ninterest', low = 'white', high = 'red') +
-  theme(axis.text.x = element_text(angle=90, hjust=0.5), panel.spacing.y = unit(0.1, "lines"))
-
-
-
-
-tomelt <- read.csv("4WeekPhotoperiod_05May2019Actlev.csv")
-
-
-melted <- melt(tomelt, id.vars= "Date", 
-               measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1","G13",
-                              "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
-
-for(i in unique(melted$variable)) {
-  tosave <- melted[melted$variable==i,]
-  names(tosave) <- c("Date", "Indiv", "Piezoact")
-  write.csv(tosave,paste0("E:\\Ex_Google_Drive\\Piezo_data\\Acto_indivs\\","Acto_4Wk_05May2019_",i,".csv"),
-            row.names=F)
+for(i in 1:length(m.Activity$Time_diff)){
+  if(m.Activity$Time_diff[i]>5){
+    imp <- seq(min(m.Activity$Date[i]), max(m.Activity$Date[i+1]), 
+               by = "5 min")
+    imputed <- c(imputed,imp)
+  }
 }
+head(imputed) ## Check to see if first value is NA
+imputed <- imputed[-1]
 
-G1$seq <- seq(1,1479,1)
-G1 <- read.csv("Acto_indivs\\Acto_4wk_05May2019_G1.csv")
-ts.G1 <- ts(G1$Piezoact,start=G1$seq[1],end = rev(G1$seq)[1])
+## Create data frame repeating the missing times by the number of individuals, to then merge.
+df.time <- data.frame(Date=rep(imputed, length(unique(m.Activity$Indiv))), 
+                      Indiv=rep(unique(m.Activity$Indiv), each=length(imputed)))
+head(df.time) # Should be a repeating individual column and distinct date column, separated by 5 min
 
-behavr(G1,)
+### IGNORE - old - Trying to make a complete time column, including missing times
+#ts <- seq.POSIXt(as.POSIXct(paste(paste(m.Activity$Day2, m.Activity$Month, m.Activity$Year, sep="/"),
+#                      paste(m.Activity$Hour2, m.Activity$Minute, sep=":")), format = "%d/%m/%Y %H:%M", by="min"))
+
+## Final time format
+#ts <- seq.POSIXt(as.POSIXlt("2019/03/20 00:00:00", tz="America/Anchorage"), 
+#                as.POSIXlt("2019/06/08 14:48:00",tz="America/Anchorage"), by="5 min")
+
+## To align starting dates to midnight
+ts <- seq.POSIXt(as.POSIXlt("2019/03/20 00:01:00", tz="America/Anchorage"), 
+                 as.POSIXlt("2019/03/20 16:26:00",tz="America/Anchorage"), by="5 min")
+#ts <- as.POSIXct(format.POSIXct(ts,'%y/%m/%d %H:%M:%S', tz="America/Anchorage"))
+
+df_start_time <- data.frame(Date=rep(ts, length(unique(m.Activity$Indiv))), Indiv=rep(unique(m.Activity$Indiv), each=length(ts)))
+head(df_start_time)
+
+df.bound_time <- rbind(df_start_time, df.time)
+head(df.bound_time)
+m.Activity <- full_join(df.bound_time,m.Act, by=c("Date","Indiv"))
+head(m.Activity)
