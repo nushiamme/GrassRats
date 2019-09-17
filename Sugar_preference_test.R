@@ -14,8 +14,25 @@ require(multcomp)
 setwd("E:\\Ex_Google_Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data")
 
 ## Read in data files
-conc <- read.csv("SugarConcTest_weights_Expt_Jun19.csv")
+conc <- read.csv("SugarConcTest_weights_Expt_Sept15.csv")
 liver <- read.csv("Liver_fat.csv")
+liver_rescore <- read.csv("Liver_fat_AS.csv")
+fatpad <- read.csv("Fat_pads.csv")
+
+m.liver_rescore <- melt(liver_rescore, id.vars=c("Animal_ID", "Photoperiod", "Sugar_conc"), 
+                        measure.vars=c("Steatosis_rating1", "Steatosis_Size1", "Other_white1",
+                                       "Steatosis_rating2", "Steatosis_Size2", "Other_white2"))
+
+ggplot(liver_rescore, aes(Photoperiod, Steatosis_rating, fill=Sugar_conc)) + my_theme +
+  geom_boxplot(alpha=0.3) + 
+  geom_point(aes(size=Steatosis_Size, col=Sugar_conc), position = "jitter") +
+  scale_fill_manual(values=c(100, 200)) + scale_color_manual(values=c(100,200))
+
+ggplot(liver_rescore, aes(Animal_ID, Steatosis_rating, col=Photoperiod)) + 
+  facet_grid(.~Sugar_conc, scales="free") +
+  #geom_boxplot(alpha=0.8) + 
+  geom_point(aes(size=Steatosis_Size))+ my_theme +
+  scale_fill_hue(h = c(100, 270))
 
 mod_liver <- lm(Liver_fat~Photoperiod*Sugar_conc, liver)
 anova(mod_liver)
@@ -24,8 +41,17 @@ plot(mod_liver)
 coef(mod_liver)
 plot(residuals(mod_liver))
 
+t.test(liver_cut$Liver_fat[liver_cut$Sugar_conc=="High"], liver_cut$Liver_fat[liver_cut$Sugar_conc=="Zero"],paired = F)
+
 liver_cut <- liver[!is.na(liver$Liver_fat),]
-ggplot(liver_cut, aes(Photoperiod, Liver_fat, fill=Sugar_conc)) + geom_boxplot(alpha=0.8) + my_theme
+ggplot(liver_cut, aes(Photoperiod, Liver_fat, fill=Sugar_conc)) + geom_boxplot(alpha=0.8) + my_theme +
+  scale_fill_hue(h = c(100, 270))
+
+fatpad$HCS <- revalue(fatpad$HCS, c("N"="0%", "Y"="8%"))
+ggplot(fatpad, aes(Treatment, Fat_pad_wt_g, fill=HCS)) + geom_boxplot(alpha=0.8) + my_theme +
+  scale_fill_hue(h = c(100, 270)) + ylab("Fat pad wt (g)")
+
+mod_fatpad <- lm(Fat_pad_wt_g~Treatment*HCS, fatpad)
 
 #### General functions ####
 my_theme <- theme_classic(base_size = 30) + 
@@ -33,7 +59,8 @@ my_theme <- theme_classic(base_size = 30) +
 
 ## Calculate amount of sugar consumed
 #conc$prop_sugar <- as.numeric(conc$Sugar_conc)
-conc$Fed_sugar_amt_g <- conc$Fed_sugarsoln_g*conc$Sugar_conc
+## On Sept 15, 2019, changed from Fed_sugarsoln_g to Fed_sugarsoln_g_perday
+conc$Fed_sugar_amt_g <- conc$Fed_sugarsoln_g_perday*conc$Sugar_conc 
 #conc$Indiv <- factor(conc$Indiv, levels=c("N1", "N2", "BK3", "BK4"))
 #conc <- arrange(conc, sugar_conc_factor, Indiv)
 
@@ -42,35 +69,37 @@ conc$Fed_sugar_amt_g <- conc$Fed_sugarsoln_g*conc$Sugar_conc
 #conc_water <- conc[conc$Fed_water_g>-1 & conc$Pre_test=="Test",]
 
 ## Subset 2 and 8%
-conc_2_8 <- conc[conc$Pre_test %in% c("Test_2%", "Test_8%"),]
-conc_2_8$sugar_conc_factor<- factor(conc_2_8$Sugar_conc, levels=c(0, 0.02, 0.08))
-conc_2_8 <- conc_2_8[conc_2_8$Sugar_mmt_good=="Y" & conc_2_8$Water_mmt_good=="Y",]
-conc_2_8$Prop_sugar <- conc_2_8$Fed_sugarsoln_g/(conc_2_8$Fed_sugarsoln_g+conc_2_8$Fed_water_g)
+conc_2_8 <- conc[conc$Pre_test=="Test" & conc$Sugar_conc %in% c(0.00, 0.02, 0.08),]
 
-conc_2_8_sugar <- subset(conc_2_8, !is.na(Fed_sugarsoln_g))
+conc_2_8$sugar_conc_factor<- factor(conc_2_8$Sugar_conc, levels=c(0.00, 0.02, 0.08))
+conc_2_8 <- conc_2_8[conc_2_8$Sugar_mmt_good=="Y" & conc_2_8$Water_mmt_good=="Y",]
+conc_2_8$Prop_sugar <- conc_2_8$Fed_sugarsoln_g_perday/(conc_2_8$Fed_sugarsoln_g_perday+conc_2_8$Fed_water_g_perday)
+
+conc_2_8_sugar <- subset(conc_2_8, !is.na(Fed_sugarsoln_g_perday))
 conc_2_8_sugar <- conc_2_8_sugar[conc_2_8_sugar$Sugar_mmt_good=="Y",]
 
-conc_2_8_water <- subset(conc_2_8, !is.na(Fed_water_g))
+conc_2_8_water <- subset(conc_2_8, !is.na(Fed_water_g_perday))
 conc_2_8_water <- conc_2_8_water[conc_2_8_water$Water_mmt_good=="Y",]
 
 ## Subset just 2%
-conc_2 <- conc[conc$Pre_test %in% c("Test_2%"),]
-conc_2_sugar <- subset(conc_2, !is.na(Fed_sugarsoln_g))
+conc_2 <- conc[conc$Pre_test=="Test" & conc$Sugar_conc==0.02,]
+conc_2_sugar <- subset(conc_2, !is.na(Fed_sugarsoln_g_perday))
 conc_2_sugar <- conc_2_sugar[conc_2_sugar$Sugar_mmt_good=="Y",]
-conc_2_water <- subset(conc_2, !is.na(Fed_water_g))
+conc_2_water <- subset(conc_2, !is.na(Fed_water_g_perday))
 conc_2_water <- conc_2_water[conc_2_water$Water_mmt_good=="Y",]
 
-consump_threshold <- ggplot(conc_8, aes(IndivSugarDay, Fed_sugarsoln_g)) + geom_b(aes(fill=Sugar_mmt_good), stat="identity") + my_theme 
-consump_threshold
+## consumption threshold 
+ggplot(conc_2, aes(Fed_sugarsoln_g)) + 
+  geom_histogram(aes(fill=Sugar_mmt_good)) + my_theme 
 
 conc_2_good <- conc_2[conc_2$Sugar_mmt_good=="Y" & conc_2$Water_mmt_good=="Y",]
 conc_2_good$Prop_sugar <- conc_2_good$Fed_sugarsoln_g/(conc_2_good$Fed_sugarsoln_g+conc_2_good$Fed_water_g)
 
 
 ## Subset just values from experimental test
-conc_8 <- subset(conc, Pre_test=="Test_8%")
+conc_8 <- conc[conc$Pre_test=="Test" & conc$Sugar_conc %in% c(0.00, 0.08),]
 conc_8$sugar_conc_factor<- factor(conc_8$Sugar_conc, levels=c(0, 0.08))
-conc_8$Prop_sugar <- conc_8$Fed_sugarsoln_g/(conc_8$Fed_sugarsoln_g+conc_8$Fed_water_g)
+conc_8$Prop_sugar <- conc_8$Fed_sugarsoln_g_perday/(conc_8$Fed_sugarsoln_g_perday+conc_8$Fed_water_g_perday)
 
 ### Histograms of sugar and water consumed to determine "reasonable" cut-offs
 #ggplot(conc_8[!is.na(conc_8$Fed_sugarsoln_g),], aes(Fed_sugarsoln_g)) + geom_histogram(aes(fill=Sugar_mmt_good)) + 
@@ -79,10 +108,10 @@ conc_8$Prop_sugar <- conc_8$Fed_sugarsoln_g/(conc_8$Fed_sugarsoln_g+conc_8$Fed_w
  # my_theme + ggtitle("Fed water")
 
 
-conc_8_sugar <- subset(conc_8, !is.na(Fed_sugarsoln_g))
+conc_8_sugar <- subset(conc_8, !is.na(Fed_sugarsoln_g_perday))
 conc_8_sugar <- conc_8_sugar[conc_8_sugar$Sugar_mmt_good=="Y",]
 
-conc_8_water <- subset(conc_8, !is.na(Fed_water_g))
+conc_8_water <- subset(conc_8, !is.na(Fed_water_g_perday))
 conc_8_water <- conc_8_water[conc_8_water$Water_mmt_good=="Y",]
 
 ## Plot sugar consumption (quantity of sugar in grams) for 2%
@@ -186,15 +215,16 @@ water_g_4_6 <- ggplot(conc_water[conc_water$Sugar_conc %in% c(0.04, 0.06),], aes
   ggtitle("4% and 6% sucrose")
 
 ## 8% Sugar solution consumed
-sugar_soln_g <- ggplot(conc_sugar, aes(IndivSugarDay, Fed_sugarsoln_g)) + facet_grid(sugar_conc_factor~Treatment, scales="free_x") +
+sugar_soln_g <- ggplot(conc_8_sugar[!is.na(conc_8_sugar$Treatment),], aes(IndivSugarDay, Fed_sugarsoln_g_perday)) + 
+  facet_grid(.~Treatment, scales="free_x") +
   my_theme + geom_boxplot(aes(fill=Treatment)) + #ylim(0,75) +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
   ylab("Sugar solution consumed (g)") #+ xlab("Individual_SugarConc_ExptDay")
 
-water_g <- ggplot(conc_water, aes(IndivSugarDay, Fed_water_g)) + my_theme + 
-  geom_boxplot(aes(fill=Treatment)) + facet_grid(sugar_conc_factor~Treatment, scales="free_x") +
+water_g <- ggplot(conc_8_water[!is.na(conc_8_water$Treatment),], aes(IndivSugarDay, Fed_water_g_perday)) + my_theme + 
+  geom_boxplot(aes(fill=Treatment)) + facet_grid(.~Treatment, scales="free_x") +
   scale_fill_hue(h = c(100, 270)) +
   theme(axis.text.x = element_text(angle=90, size=15, vjust=0.5)) + theme(legend.position = "none") +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
@@ -215,19 +245,20 @@ prop_sugar
 prop_sugar_boxplot <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(Treatment, Prop_sugar)) + my_theme + 
   geom_boxplot(aes(fill=Treatment)) + 
   facet_grid(.~sugar_conc_factor, scales="free_x") +
-  scale_fill_hue(h = c(100, 270)) +
+  #scale_fill_hue(h = c(100, 270)) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), legend.text = element_text(size=20),
         legend.key.height = unit(3,"line")) +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
   ylab("Proportion sugar soln consumed") + xlab("Chamber") #+ xlab("Individual_SugarConc_ExptDay")
 prop_sugar_boxplot
 
-conc_2_8$sugar_conc_factor <- factor(conc_2_8$sugar_conc_factor, levels = c(0.02,0,0.08))
-conc_2_8$Treatment <- revalue(conc_2_8$Treatment, c("Long" = "Neutral"))
-prop_sugar_2_8 <- ggplot(conc_2_8[!is.na(conc_2_8$Prop_sugar),], aes(Treatment, Prop_sugar)) + my_theme + 
+#conc_2_8$sugar_conc_factor <- factor(conc_2_8$sugar_conc_factor, levels = c(0.02,0,0.08))
+#conc_2_8$Treatment <- revalue(conc_2_8$Treatment, c("Long" = "Neutral"))
+prop_sugar_2_8 <- ggplot(conc_2_8[!is.na(conc_2_8$Prop_sugar),], aes(Treatment, Prop_sugar)) + my_theme2 + 
   geom_boxplot(aes(fill=Treatment)) + facet_grid(.~sugar_conc_factor, scales="free_x") +
   geom_point() +
-  scale_fill_hue(h = c(100, 270)) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(axis.text.x = element_text(angle=60, size=20, vjust=0.5), legend.text = element_text(size=15),
         legend.key.height = unit(3,"line")) +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
@@ -281,6 +312,7 @@ anova(mod_2_8)
 mod_2_8_noIndiv <- lm(Prop_sugar~sugar_conc_factor+Treatment, data=conc_2_8)
 
 mod_2_8_noIndiv_noTreatment <- lm(Prop_sugar~sugar_conc_factor, data=conc_2_8)
+#plot(allEffects(mod_2_8_noIndiv_noTreatment))
 
 ## Best model here
 mod_2_8_noTreatment <- lmer(Prop_sugar~sugar_conc_factor+(1|Indiv), data=conc_2_8)
@@ -302,7 +334,13 @@ ggplot(tmp_sugar, aes(x = Comparison, y = Estimate, ymin = lwr, ymax = upr)) + m
   geom_errorbar() + geom_point()
 
 mod_2_8_noTreatment_Wt <- lmer(Prop_sugar~sugar_conc_factor+(1|Indiv)+Animal_wt_g, data=conc_2_8)
-
+summary(mod_2_8_noTreatment_Wt)
+anova(mod_2_8_noTreatment_Wt)
+qqnorm(resid(mod_2_8_noTreatment_Wt))
+qqline(resid(mod_2_8_noTreatment_Wt))
+coef(mod_2_8_noTreatment_Wt)
+library(effects)
+plot(allEffects(mod_2_8_noTreatment_Wt)) ## requires 'effects' package
 
 anova(mod_2_8_Day, mod_2_8, mod_2_8_noIndiv, mod_2_8_noIndiv_noTreatment, mod_2_8_noTreatment, mod_2_8_noTreatment_Wt)
 
@@ -311,7 +349,6 @@ ggplot(conc_8, aes(Fed_sugarsoln_g, Fed_water_g)) + geom_point() + geom_smooth(m
 
 ggplot(conc_8, aes(as.factor(Chamber), Prop_sugar)) + geom_boxplot(aes(fill=sugar_conc_factor))
 
-### INCLUDE RANDOM EFFECT OF INDIVIDUAL ## REPEATED MEASURES OF INDIVIDUALS
 ## Lmer model of proportion of liquid consumed that was sugar solution
 mod_prop_sugar_full <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+(1|Treatment)+(1|Sex) + (1|Indiv) + DaySinceStart, data=conc_8)
 summary(mod_prop_sugar_full)
@@ -346,13 +383,20 @@ summary(mod_prop_sugar_JustSugar)
 
 mod_prop_sugar_noIndiv <- lm(Prop_sugar~sugar_conc_factor, data=conc_8) 
 
-anova(mod_prop_sugar_full, mod_prop_sugar_full_noDay, mod_prop_sugar_noMass, mod_prop_sugar_noMassSex, 
-      mod_prop_sugar_JustSugar, mod_prop_sugar_interac, mod_prop_sugar_noIndiv)
+anova(#mod_prop_sugar_noIndiv,
+      mod_prop_sugar_full, mod_prop_sugar_full_noDay, mod_prop_sugar_noMass, mod_prop_sugar_noMassSex, 
+      mod_prop_sugar_JustSugar, mod_prop_sugar_interac)
 
 
 
-t.test(conc$Prop_sugar[conc$Treatment=="Short" & conc$Sugar_mmt_good %in% c("Y", "M")], 
-       conc$Prop_sugar[conc$Treatment=="Long" & conc$Sugar_mmt_good %in% c("Y", "M")], paired = F)
+t.test(conc_8_sugar$Prop_sugar[conc_8_sugar$Treatment=="Short" & 
+                                 conc_8_sugar$Sugar_mmt_good %in% c("Y", "M") &
+                         !is.na(conc_8_sugar$Prop_sugar) &
+                           conc_8_sugar$sugar_conc_factor==0.08], 
+       conc_8_sugar$Prop_sugar[conc_8_sugar$Treatment=="Long" & 
+                                 conc_8_sugar$Sugar_mmt_good %in% c("Y", "M") &
+                                 !is.na(conc_8_sugar$Prop_sugar) &
+                                 conc_8_sugar$sugar_conc_factor==0.08], paired = F)
 
 mean(conc_sugar$Fed_sugarsoln_g[conc_sugar$Treatment=="Short" & conc_sugar$Sugar_mmt_good %in% c("Y", "M")])
 mean(conc_sugar$Fed_sugarsoln_g[conc_sugar$Treatment=="Long" & conc_sugar$Sugar_mmt_good %in% c("Y", "M")])

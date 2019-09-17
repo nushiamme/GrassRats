@@ -115,10 +115,8 @@ Day_start <- as.POSIXct(paste(paste(m.Act$Day2[1], m.Act$Month[1], m.Act$Year[1]
 time_diff_from_start <- as.numeric(60*60*(m.Act$Date[1]- Day_start)) ## Convert hours to seconds
 
 m.Act$Time_diff2 <- m.Act$Time_diff+time_diff_from_start
-## For checking which rows of Time_diff are > 5
-#m.Act$sno <- seq(1:length(m.Act$Date))
 
-#m.Activity <- data_with_missing_times[order(data_with_missing_times$Indiv, data_with_missing_times$Date),]
+m.Act$Time_diff_Treatment <- m.Act$Time_diff2
 
 m.Activity <- m.Act
 m.Activity$Treatment <- factor(m.Activity$Treatment, 
@@ -128,6 +126,14 @@ m.Activity <- merge(m.Activity,anim_cham,by="Indiv")
 m.Activity <- m.Activity[order(m.Activity$Chamber, m.Activity$Date),]
 head(m.Activity)
 
+## CHANGE when including phase 2 animals
+## Looking at non-shifted graphs, creating new 'shofted' 'time_diff' column
+## shifting 4 week short photoperiod animals 3 hours earlier; shifting HCS animals 3.5 hours earlier.
+m.Activity$Time_diff_Treatment[m.Activity$Treatment=="4WeekPhotoperiod" & m.Activity$Chamber<12] <- 
+  m.Activity$Time_diff_Treatment[m.Activity$Treatment=="4WeekPhotoperiod" & m.Activity$Chamber<12]+(3*3600)
+
+m.Activity$Time_diff_Treatment[m.Activity$Treatment=="HighSucrose" & m.Activity$Chamber<12] <- 
+  m.Activity$Time_diff_Treatment[m.Activity$Treatment=="HighSucrose" & m.Activity$Chamber<12]+(3.5*3600)
 
 #m.Activity <- m.Activity[complete.cases(m.Activity),]
 
@@ -148,6 +154,15 @@ summary(beh.act, detailed=T)
 head(beh.act)
 tail(beh.act)
 
+## Shifted 't' column earlier by 4 hours,
+#just for !2wkacclim short photoperiod individuals, like subjective day
+beh.act_shift <-behavr(dt.act,metadata = dt.meta)
+beh.act_shift$t <- beh.act$Time_diff_Treatment
+#beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
+summary(beh.act_shift, detailed=T)
+#beh.act <- beh.act[order(beh.act$Chamber,beh.act$Date)]
+head(beh.act_shift)
+tail(beh.act_shift)
 
 ## IGNORE Summarizing mean and max activity levels
 #stat_dt <- beh.act[,
@@ -201,35 +216,61 @@ p.pop_2wk <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="2Wee
 ##Population level, all indivs; just the "expt" values; faceted by photoperiod, just 4wk
 p.pop_4wk <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="4WeekPhotoperiod",], 
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + #facet_grid(Photoperiod~.) + 
-  my_theme + ggtitle("4 week photoperiod") + ylim(0,3) + theme(axis.text.x = element_blank()) + xlab("")
+  my_theme2 + ggtitle("4 week photoperiod") + ylim(0,3) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3, 'lines')) + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
+
+##Population level, all indivs; just the "expt" values; faceted by photoperiod, just low sucrose
+ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="LowSucrose",], 
+       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme2 + ggtitle("Low Sucrose") + ylim(0,3) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3, 'lines')) + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(1*60*60)), labels = seq(0,48,1))
 
 ##Population level, all indivs; just the "expt" values; faceted by photoperiod, just high sucrose
-p.pop_HCS <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], 
-       aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + #facet_grid(Photoperiod~.) + 
-  my_theme  + ggtitle("High Sucrose") + ylim(0,3)
+sugar.labs <- c("No sugar", "8% sugar")
+names(sugar.labs) <- c("N", "Y")
+ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], 
+                    aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + 
+  facet_grid(Sugar~., labeller = labeller(Sugar=sugar.labs)) + 
+  my_theme2 + ggtitle("High Sucrose") + ylim(0,3) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3, 'lines'), 
+        panel.grid.major.x = element_line(colour = "grey70", size=1)) + 
+  xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(1*60*60)), labels = seq(0,48,1))
 
 grid.arrange(p.pop_2wk, p.pop_4wk,p.pop_HCS, ncol=1, nrow=3)
 
+## With Shifted beh.act data frame
 ##Population level, all indivs; just the "expt" values; colored by photoperiod, just high sucrose
 # Viridis colors c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
-ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], 
+ggetho(beh.act_shift[beh.act_shift$Prep_expt=="expt" & beh.act_shift$Treatment=="HighSucrose",], 
                     aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24)) + 
   stat_pop_etho() + #facet_grid(Photoperiod~.) + 
-  my_theme  + ggtitle("High Sucrose") + ylim(0,3) +
+  my_theme2 + ggtitle("High Sucrose") + ylim(0,3) +
   scale_color_manual(values = c("#F38BA8", "#23988aff")) +
-  scale_fill_manual(values = c("#F38BA8", "#23988aff"))
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3, 'lines')) + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
 
 ##Population level, all short photoperiod indivs; just last week of high sucrose
-pop_short_HCS <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose" & beh.act$id<13,], 
+pop_short_HCS <- ggetho(beh.act_shift[beh.act_shift$Prep_expt=="expt" & beh.act_shift$Treatment=="HighSucrose" & beh.act$id<13,], 
        aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24), 
        time_offset = hours(4)) + 
   stat_pop_etho() + #facet_grid(Photoperiod~.) + 
-  my_theme  + ggtitle("High Sucrose") + ylim(0,3) + 
+  my_theme2 + ggtitle("High Sucrose") + ylim(0,3) + 
   scale_color_manual(values = "#23988aff") +
-  scale_fill_manual(values = "#23988aff")
+  scale_fill_manual(values = "#23988aff") +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
 
 
-##Population level, all short photoperiod indivs; just last week of high sucrose
+##Population level, all long photoperiod indivs; just last week of high sucrose
 pop_long_HCS <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose" & beh.act$id>12,], 
        aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24)) + 
   stat_pop_etho() + #facet_grid(Photoperiod~.) + 
@@ -237,6 +278,30 @@ pop_long_HCS <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="H
   scale_color_manual(values = "#F38BA8") +
   scale_fill_manual(values = "#F38BA8")
 
+## With Shifted beh.act data frame
+##Population level, all indivs; just the "expt" values; colored by photoperiod, just last week of 4week
+# Viridis colors c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+ggetho(beh.act_shift[beh.act_shift$Prep_expt=="expt" & beh.act_shift$Treatment=="4WeekPhotoperiod",], 
+       aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24)) + 
+  stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme2  + ggtitle("4 Week Photoperiod") + ylim(0,3) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3, 'lines')) +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3)) + xlab("Time (hours)")
+
+##Population level, all short photoperiod indivs; just last week of 4 week
+ggetho(beh.act_shift[beh.act_shift$Prep_expt=="expt" & 
+                                        beh.act_shift$Treatment=="4WeekPhotoperiod" & beh.act$id<13,], 
+                        aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24), 
+                        time_offset = hours(4)) + 
+  stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme  + ggtitle("4 Week Photoperiod") + ylim(0,3) + 
+  scale_color_manual(values = "#23988aff") +
+  scale_fill_manual(values = "#23988aff") +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
+
+## Synced
 grid.arrange(pop_short_HCS, pop_long_HCS)
 
 ## Population graph single individual, short
@@ -318,12 +383,24 @@ ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x
   stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'), outline = NA,l_duration = hours(12),phase = hours(6)) +
   stat_bar_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15))
 
-## OVERALL viridis, Tiled, long photoperiod T13
+## For Cory
+## OVERALL including 2 week acclim, viridis, Tiled, long photoperiod T13
+ggetho(beh.act[beh.act$id=="24",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## For Cory
+## OVERALL excluding 2 week acclim, viridis, Tiled, long photoperiod T13
 ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
   stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
-  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  stat_tile_etho() + my_theme2 + 
+  theme(axis.text.y = element_text(size=15)) +
+  #theme(axis.text.y = element_blank()) +
   #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
-  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
   scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
 
 ## Just the "expt" section of 2wk, Tiled, long photoperiod T13
@@ -369,12 +446,22 @@ ggetho(beh.act[beh.act$id=="1",],aes(x=t, z=PiezoAct), multiplot = 2) +
   scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
   scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
 
-## OVERALL Tiled, short photoperiod G5
+## For Cory
+## OVERALL Incl 2 week  Tiled, short photoperiod G5
 ggetho(beh.act[beh.act$id=="2",], aes(x=t, z=PiezoAct), multiplot=2) +
   stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
-  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_text(size=15)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_blank()) +
   #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
-  scale_fill_viridis() + ylab("Period") + xlab("Time (hours)") +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## For Cory
+## OVERALL excl 2 week  Tiled, short photoperiod G5
+ggetho(beh.act[beh.act$id=="2" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
   scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
 
 ## Just the "expt" section of 2wk, Tiled, short photoperiod G2
