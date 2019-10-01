@@ -27,6 +27,9 @@ meta_activ <- meta_full[,c("Indiv", "Sex", "Photoperiod", "Sugar", "Chamber")]
 
 m.Act <- read.csv(".\\Melted\\Melted_PiezoActivity_Phase1_new.csv") 
 
+## Try to plot mean SB lengths per hour, like the rethomics population plot
+
+
 ## General functions
 my_theme <- theme_classic(base_size = 15) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
@@ -235,8 +238,9 @@ ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="LowSucrose",],
 sugar.labs <- c("No sugar", "8% sugar")
 names(sugar.labs) <- c("N", "Y")
 ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], 
-                    aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + 
-  facet_grid(Sugar~., labeller = labeller(Sugar=sugar.labs)) + 
+                    aes(x=t, y=PiezoAct, col=Sugar), time_wrap = hours(24)) + stat_pop_etho() +
+  stat_summary(fun.data = "mean_cl_boot", colour = "grey30", alpha=0.3, size = 1) +
+  facet_grid(Photoperiod~., labeller = labeller(Sugar=sugar.labs)) + 
   my_theme2 + ggtitle("High Sucrose") + ylim(0,3) +
   scale_color_manual(values = c("#F38BA8", "#23988aff")) +
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) +

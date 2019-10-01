@@ -18,44 +18,65 @@ conc <- read.csv("SugarConcTest_weights_Expt_Sept15.csv")
 liver <- read.csv("Liver_fat.csv")
 liver_rescore <- read.csv("Liver_fat_AS.csv")
 fatpad <- read.csv("Fat_pads.csv")
+weights <- read.csv("Animal_weights_forMassChange.csv")
 
-m.liver_rescore <- melt(liver_rescore, id.vars=c("Animal_ID", "Photoperiod", "Sugar_conc"), 
-                        measure.vars=c("Steatosis_rating1", "Steatosis_Size1", "Other_white1",
-                                       "Steatosis_rating2", "Steatosis_Size2", "Other_white2"))
 
-ggplot(liver_rescore, aes(Photoperiod, Steatosis_rating, fill=Sugar_conc)) + my_theme +
-  geom_boxplot(alpha=0.3) + 
-  geom_point(aes(size=Steatosis_Size, col=Sugar_conc), position = "jitter") +
-  scale_fill_manual(values=c(100, 200)) + scale_color_manual(values=c(100,200))
-
-ggplot(liver_rescore, aes(Animal_ID, Steatosis_rating, col=Photoperiod)) + 
-  facet_grid(.~Sugar_conc, scales="free") +
-  #geom_boxplot(alpha=0.8) + 
-  geom_point(aes(size=Steatosis_Size))+ my_theme +
-  scale_fill_hue(h = c(100, 270))
-
-mod_liver <- lm(Liver_fat~Photoperiod*Sugar_conc, liver)
-anova(mod_liver)
-summary(mod_liver)
-plot(mod_liver)
-coef(mod_liver)
-plot(residuals(mod_liver))
-
-t.test(liver_cut$Liver_fat[liver_cut$Sugar_conc=="High"], liver_cut$Liver_fat[liver_cut$Sugar_conc=="Zero"],paired = F)
-
-liver_cut <- liver[!is.na(liver$Liver_fat),]
-ggplot(liver_cut, aes(Photoperiod, Liver_fat, fill=Sugar_conc)) + geom_boxplot(alpha=0.8) + my_theme +
-  scale_fill_hue(h = c(100, 270))
-
-fatpad$HCS <- revalue(fatpad$HCS, c("N"="0%", "Y"="8%"))
-ggplot(fatpad, aes(Treatment, Fat_pad_wt_g, fill=HCS)) + geom_boxplot(alpha=0.8) + my_theme +
-  scale_fill_hue(h = c(100, 270)) + ylab("Fat pad wt (g)")
-
-mod_fatpad <- lm(Fat_pad_wt_g~Treatment*HCS, fatpad)
 
 #### General functions ####
 my_theme <- theme_classic(base_size = 30) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
+
+
+#### Animal weights ####
+#weights$Date <- as.POSIXct(paste(weights$Day, weights$Month, weights$Year, sep="/"), 
+#                         format = "%d/%m/%Y", tz="America/Anchorage")
+
+weights$Photoperiod <- 0
+weights$Photoperiod[weights$Room=="019D"] <- "Neutral"
+weights$Photoperiod[weights$Room=="019F"] <- "Short"
+weights$Photoperiod_g <- "NA"
+weights$Postsugar_g <- "NA"
+weights$wk_euthanasia_g <- "NA"
+weights$Photoperiod_g <- weights$Weight_presugar-weights$Weight_2wk
+weights$Postsugar_g <- weights$Weight_euthanasia-weights$Weight_presugar
+weights$wk_euthanasia_g <- weights$Weight_euthanasia-weights$Weight_2wk
+
+
+m.weights <- melt(weights, id.vars=c("Individual", "Photoperiod", "Sugar"), 
+                  measure.vars=c("Photoperiod_g", "Postsugar_g", "wk_euthanasia_g"))
+
+
+## Mass change Presugar minus 2 week acclim (mass change over 4 week photoperiod phase)
+ggplot(m.weights[m.weights$variable=="Photoperiod_g",], aes(Photoperiod, value)) + 
+  geom_boxplot(aes(fill=Photoperiod)) + 
+  my_theme + xlab("Photoperiod treatment") + ylab("Mass change (g)") +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3,"line"))
+
+## Switch high and non sugar order on x-axis
+## Send all three plots, without geom_point and text
+## Mass change Euthanasia minus Pre-sugar (mass change over sugar treatment)
+
+ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(fct_rev(Sugar), value)) + 
+  geom_boxplot(aes(fill=Photoperiod)) + #geom_point(aes(col=Photoperiod)) + geom_text(aes(label=Individual))+
+  my_theme + xlab("Sugar treatment") + ylab("Mass change (g)") +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3,"line"))
+
+ggplot(m.weights[m.weights$variable=="wk_euthanasia_g",], aes(fct_rev(Sugar), value)) + 
+  geom_boxplot(aes(fill=Photoperiod)) + #geom_point(aes(col=Photoperiod)) + geom_text(aes(label=Individual))+
+  my_theme + xlab("Sugar treatment") + ylab("Mass change (g)") +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3,"line"))
+
+m.weights$Photoperiod <- as.factor(as.character(m.weights$Photoperiod))
+
+t.test(m.weights$value[m.weights$variable=="Photoperiod_g" & m.weights$Photoperiod=="Neutral"],
+       m.weights$value[m.weights$variable=="Photoperiod_g" & m.weights$Photoperiod=="Short"], paired = F)
+
+m.weights$Sugar <- as.factor(as.character(m.weights$Sugar))
+summary(lm(value~Photoperiod*Sugar, 
+                      data=m.weights[m.weights$variable=="Postsugar_g",]))
 
 ## Calculate amount of sugar consumed
 #conc$prop_sugar <- as.numeric(conc$Sugar_conc)
@@ -242,6 +263,15 @@ prop_sugar <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(as.factor(Chamber),
   ylab("Proportion sugar soln consumed") + xlab("Chamber") #+ xlab("Individual_SugarConc_ExptDay")
 prop_sugar
 
+
+ggplot(conc_8[!is.na(conc_8$Prop_sugar) & conc_8$Pre_test=="Test",], aes(DaySinceStart, Prop_sugar)) + my_theme + 
+  geom_line(aes(col=Indiv), size=2) + facet_grid(.~sugar_conc_factor, scales="free_x") +
+  scale_fill_hue(h = c(100, 270)) +
+  theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), legend.text = element_text(size=20),
+        legend.key.height = unit(3,"line")) +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) +
+  ylab("Proportion sugar soln consumed") + xlab("Chamber") #+ xlab("Individual_SugarConc_ExptDay")
+
 prop_sugar_boxplot <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(Treatment, Prop_sugar)) + my_theme + 
   geom_boxplot(aes(fill=Treatment)) + 
   facet_grid(.~sugar_conc_factor, scales="free_x") +
@@ -275,30 +305,40 @@ prop_sugar_2_8_indiv <- ggplot(conc_2_8[!is.na(conc_2_8$Prop_sugar),], aes(Indiv
   ylab("Proportion sugar soln consumed") #+ xlab("Individual_SugarConc_ExptDay")
 prop_sugar_2_8_indiv
 
-## IGNORE
-dpr_conc_8 <- conc_8[,c(6,8,11:14,28)]
-dpr_conc_8$Treatment <- revalue(dpr_conc_8$Treatment, c("Long"="1", "Short"="0"))
-dpr_conc_8$Sex <- revalue(dpr_conc_8$Sex, c("F"="0", "M"="1"))
-dpr_conc_8$Sex <- as.numeric(as.factor(dpr_conc_8$Sex))
-dpr_conc_8$Treatment <- as.numeric(as.factor(dpr_conc_8$Treatment))
-dpr_conc_8$Indiv <- as.numeric(as.factor(dpr_conc_8$Indiv))
-dpr_conc_8 <- na.omit(dpr_conc_8)
-pr_conc_8 <- prcomp(dpr_conc_8, scale=T)
+#### Liver and fat
+m.liver_rescore <- melt(liver_rescore, id.vars=c("Animal_ID", "Photoperiod", "Sugar_conc"), 
+                        measure.vars=c("Steatosis_rating1", "Steatosis_Size1", "Other_white1",
+                                       "Steatosis_rating2", "Steatosis_Size2", "Other_white2"))
 
-fviz_eig(pr_conc_8)
-fviz_pca_ind(pr_conc_8,
-             col.ind = "cos2", # Color by the quality of representation
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = TRUE     # Avoid text overlapping
-)
+ggplot(liver_rescore, aes(Photoperiod, Steatosis_rating, fill=Sugar_conc)) + my_theme +
+  geom_boxplot(alpha=0.3) + 
+  geom_point(aes(size=Steatosis_Size, col=Sugar_conc), position = "jitter") +
+  scale_fill_manual(values=c(100, 200)) + scale_color_manual(values=c(100,200))
 
-fviz_pca_var(pr_conc_8,
-             col.var = "contrib", # Color by contributions to the PC
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = TRUE     # Avoid text overlapping
-)
+ggplot(liver_rescore, aes(Animal_ID, Steatosis_rating, col=Photoperiod)) + 
+  facet_grid(.~Sugar_conc, scales="free") +
+  #geom_boxplot(alpha=0.8) + 
+  geom_point(aes(size=Steatosis_Size))+ my_theme +
+  scale_fill_hue(h = c(100, 270))
 
+mod_liver <- lm(Liver_fat~Photoperiod*Sugar_conc, liver)
+anova(mod_liver)
+summary(mod_liver)
+plot(mod_liver)
+coef(mod_liver)
+plot(residuals(mod_liver))
 
+liver_cut <- liver[!is.na(liver$Liver_fat),]
+ggplot(liver_cut, aes(Photoperiod, Liver_fat, fill=Sugar_conc)) + geom_boxplot(alpha=0.8) + my_theme +
+  scale_fill_hue(h = c(100, 270))
+
+fatpad$HCS <- revalue(fatpad$HCS, c("N"="0%", "Y"="8%"))
+ggplot(fatpad, aes(Treatment, Fat_pad_wt_g, fill=HCS)) + geom_boxplot(alpha=0.8) + my_theme +
+  scale_fill_hue(h = c(100, 270)) + ylab("Fat pad wt (g)")
+
+mod_fatpad <- lm(Fat_pad_wt_g~Treatment*HCS, fatpad)
+
+#### Sugar models
 mod_2_8_Day <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv)+(1|DaySinceStart)+Animal_wt_g, data=conc_2_8)
 
 mod_2_8 <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv), data=conc_2_8)
@@ -306,8 +346,6 @@ mod_2_8 <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv), data=conc_2_8)
 summary(mod_2_8)
 coef(mod_2_8)
 anova(mod_2_8)
-
-
 
 mod_2_8_noIndiv <- lm(Prop_sugar~sugar_conc_factor+Treatment, data=conc_2_8)
 

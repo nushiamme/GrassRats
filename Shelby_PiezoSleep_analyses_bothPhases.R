@@ -26,7 +26,9 @@ piezoday_2wk1 <- read.csv("2WeekAcclimation_26Mar2019_longTime.csv")
 piezoday_LowSugar1 <- read.csv("LowSucrose_andTest_07May2019_combined_with_sub_day.csv")
 piezoday_HighSugar1 <- read.csv("HighSucrose_29May2019_combined_with_sub_day.csv")
 #piezoday_presugar_bouts1 <- read.csv("4WeekPhotoperiod_24Apr2019SleepBout_MeanSB.csv")
-#piezoday_postsugar_bouts1 <- read.csv("HighSucrose_29May2019SleepBout_MeanSB.csv")
+piezoday_postsugar_bouts1 <- read.csv("..\\SleepBout_histogram_files\\HighSucrose_29May2019SleepBout_MeanSB_processed.csv") ## For mean hourly sleep bouts
+postsugar_percbouts1 <- read.csv("..\\SleepBout_histogram_files\\HighSucrose_29May2019_PercentHourlySleep_processed.csv") ## For mean hourly sleep bouts
+
 
 piezoday_4wk2 <- read.csv("Phase2_4WeekPhotoperiod_22Jul2019_combined_with_sub_day.csv")
 piezoday_2wk2 <- read.csv("Phase2_2WeekAcclimation_19Jun2019_long.csv")
@@ -42,7 +44,7 @@ piezoday_HighSugar2 <- read.csv("Phase2_8%sucrose_21Aug2019_combined_with_sub_da
 my_theme <- theme_classic(base_size = 25) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
 
-## Melt to form long dataframes
+#### Melt to form long dataframes ####
 ## "1" in an object name meansit's a phase 1 data frame. When processing pase 2, add "2". 
 ## For combined files including phase 1 and phase 2, there should generally be no ending number
 
@@ -222,6 +224,115 @@ m.piezobout_HighSugar2 <- melt(piezoday_HighSugar2, id.vars= c("MOUSE_ID", "TEST
                                                                                                        "BOUTLENGTHDAY7", "BOUTLENGTHTOT8",
                                                                                                        "BOUTLENGTHNITE8", "BOUTLENGTHDAY8"))
 
+#### Mean hourl sleep bout length ####
+
+## Right now just cheating and procesing perentage bouts as if that dataframe is the mean sleep bouts one
+piezoday_postsugar_bouts1 <- postsugar_percbouts1
+m.postsugar_bouts1 <- melt(piezoday_postsugar_bouts1, 
+                           id.vars=c("Date","Day", "Month", "Year", "Hour", "Minute", "am_pm"), 
+                           measure.vars=c("G9", "G5","G14","G16", "G18", "G10",
+                                                                   "G8", "G2", "T10", "T5", "T17", "T12",
+                                                                   "G4", "G1", "G13", "G17", "G19", "G11",
+                                                                   "G12", "G3", "T9", "T11", "T19", "T13"))                                                                               
+
+m.postsugar_bouts1$Hour2[m.postsugar_bouts1$am_pm=="AM"] <- 
+  m.postsugar_bouts1$Hour[m.postsugar_bouts1$am_pm=="AM"]
+
+m.postsugar_bouts1$Hour2[m.postsugar_bouts1$am_pm=="PM"  & m.postsugar_bouts1$Hour!=12] <- 
+  12+m.postsugar_bouts1$Hour[m.postsugar_bouts1$am_pm=="PM" & m.postsugar_bouts1$Hour!=12]
+
+m.postsugar_bouts1$Hour2[m.postsugar_bouts1$am_pm=="PM"  & m.postsugar_bouts1$Hour==12] <- 12
+m.postsugar_bouts1$Hour2[m.postsugar_bouts1$am_pm=="AM"  & m.postsugar_bouts1$Hour==12] <- 00
+
+
+
+m.postsugar_bouts1$Date <- as.POSIXct(paste(paste(m.postsugar_bouts1$Day, m.postsugar_bouts1$Month, 
+                                                  m.postsugar_bouts1$Year, sep="/"),
+                               paste(m.postsugar_bouts1$Hour2, m.postsugar_bouts1$Minute, sep=":")), 
+                         format = "%d/%m/%Y %H:%M", tz="America/Anchorage")
+
+m.postsugar_bouts1$Photoperiod <- 0
+m.postsugar_bouts1$Photoperiod[m.postsugar_bouts1$variable 
+                               %in% c("G9", "G5","G14","G16", "G18", "G10",
+                                      "G8", "G2", "T10", "T5", "T17", "T12")] <- "Short"
+m.postsugar_bouts1$Photoperiod[m.postsugar_bouts1$variable 
+                               %in% c("G4", "G1", "G13", "G17", "G19", "G11",
+                                      "G12", "G3", "T9", "T11", "T19", "T13")] <- "Neutral"
+
+## Shifting short photoperiod individuals 3.5 hours earlier
+m.postsugar_bouts1$Hour_shifted <- m.postsugar_bouts1$Hour2
+m.postsugar_bouts1$Hour_shifted[m.postsugar_bouts1$Photoperiod=="Short"] <- 
+  m.postsugar_bouts1$Hour2[m.postsugar_bouts1$Photoperiod=="Short"]+(3)
+m.postsugar_bouts1$Hour_shifted[m.postsugar_bouts1$Hour_shifted==24] <- 0
+m.postsugar_bouts1$Hour_shifted[m.postsugar_bouts1$Hour_shifted==25] <- 1
+m.postsugar_bouts1$Hour_shifted[m.postsugar_bouts1$Hour_shifted==26] <- 2
+
+
+
+#### Function for stat_pop_etho from rethomics program ####
+
+## Trying out stat_pop_etho style plot
+stat_pop_sleep_trial <- function(mapping = NULL, data = NULL,
+                                 geom = "smooth", position = "identity",
+                                 ...,
+                                 method = mean_se,
+                                 method.args = list(),
+                                 show.legend = NA,
+                                 inherit.aes = TRUE) {
+  layer(
+    data = data,
+    mapping = mapping,
+    stat = StatPopEtho_trial,
+    geom = geom,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      method = method,
+      method.args = method.args,
+      se=TRUE,
+      ...
+    )
+  )
+}
+
+
+StatPopEtho_trial <- ggplot2::ggproto("StatPopEtho", ggplot2::Stat,
+                                      compute_group = function(data, scales, method, method.args = list()) {
+                                        data <- data.table::as.data.table(data)
+                                        foo <- function(y){
+                                          all_args <- append(list(y), method.args)
+                                          do.call(method, all_args)
+                                        }
+                                        out <- data[,
+                                                    foo(y),
+                                                    keyby="x"]
+                                        out
+                                      },
+                                      required_aes = c("x", "y")
+)
+
+
+#### Plotting percent sleep across hour of day, all individuals, for high sugar phase ####
+## Percent sleep per hour
+ggplot(m.postsugar_bouts1, aes(Hour2,value)) +
+  stat_pop_sleep_trial(aes(col=Photoperiod, fill=Photoperiod)) + my_theme +
+  ylab("Percentage hourly sleep") + xlab("Hour of day")+
+  scale_x_continuous(breaks =seq(0,24,3)) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff"))
+  
+
+## Percent sleep per hour, shifted
+ggplot(m.postsugar_bouts1, aes(Hour_shifted,value)) +  
+  stat_pop_sleep_trial(aes(col=Photoperiod, fill=Photoperiod)) + my_theme +
+  ylab("Percentage hourly sleep") + xlab("Hour of day")+
+  scale_x_continuous(breaks =seq(0,24,3)) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff"))
+  
+  
+  
 #phase 1
 m.piezoday_long1$Treatment <- "2wk"
 m.piezoday_short1$Treatment <- "4wk"
