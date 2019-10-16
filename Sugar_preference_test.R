@@ -380,7 +380,8 @@ coef(mod_2_8_noTreatment_Wt)
 library(effects)
 plot(allEffects(mod_2_8_noTreatment_Wt)) ## requires 'effects' package
 
-anova(mod_2_8_Day, mod_2_8, mod_2_8_noIndiv, mod_2_8_noIndiv_noTreatment, mod_2_8_noTreatment, mod_2_8_noTreatment_Wt)
+anova(mod_2_8_Day, mod_2_8, mod_2_8_noIndiv, mod_2_8_noIndiv_noTreatment, mod_2_8_noTreatment,
+      mod_2_8_noTreatment_Wt)
 
 # Regression of sugar soln vs water
 ggplot(conc_8, aes(Fed_sugarsoln_g, Fed_water_g)) + geom_point() + geom_smooth(method = "lm")

@@ -21,11 +21,13 @@ setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
 source("Spectrogram.R")
 
 ## Metadata file for rethomics behavr table
-meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_ExptPhase1.csv")
+meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_Expt.csv")
 
-meta_activ <- meta_full[,c("Indiv", "Sex", "Photoperiod", "Sugar", "Chamber")]
+meta_activ1 <- meta_full[meta_full$Phase==1,c("Indiv", "Sex", "Photoperiod", "Sugar", "Chamber", "Phase")]
+meta_activ2 <- meta_full[meta_full$Phase==2,c("Indiv", "Sex", "Photoperiod", "Sugar", "Chamber", "Phase")]
 
-m.Act <- read.csv(".\\Melted\\Melted_PiezoActivity_Phase1_new.csv") 
+
+m.Act <- read.csv(".\\Melted\\Melted_PiezoActivity_bothPhases_new.csv") 
 
 ## Try to plot mean SB lengths per hour, like the rethomics population plot
 
@@ -41,6 +43,7 @@ my_theme2 <- theme_classic(base_size = 30) +
 
 #### Ignore if reading in Melted activity csv; only run to re-process raw data ####
 ## Get all the required csv's together
+## MAKE SURE to change first cell [1,1] in all csv's to "Date" in Excel before reading in here
 paths <- dir(pattern = "\\.csv$")
 names(paths) <- basename(paths)
 paths
@@ -54,8 +57,10 @@ for(i in 1:(length(Activ)-1)) {
   ## Splitting the file name to get IndivID, date, and time
   Activ[[i]]$Treatment <- 
     unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 1))
+  Activ[[i]]$Phase <- 
+    as.numeric(unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 2)))
   Activ[[i]]$FileDate <- 
-    unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 2))
+    unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 3))
   #Activ[[i]][[1]] <- gsub('-', '/', Activ[[i]][[1]])
   Activ[[i]]$Month <-
     unlist(lapply(strsplit(as.character(Activ[[i]][[1]]), "/"), "[", 1))
@@ -69,10 +74,18 @@ for(i in 1:(length(Activ)-1)) {
     unlist(lapply(strsplit(as.character(Activ[[i]]$Time), ":"), "[", 1))
   Activ[[i]]$Minute <-
     unlist(lapply(strsplit(as.character(Activ[[i]]$Time), ":"), "[", 2))
-  m.Activ[[i]] <- melt(Activ[[i]], id.vars= c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment"), 
+  if(Activ[[i]]$Phase[1]==1) {
+  m.Activ[[i]] <- melt(Activ[[i]], id.vars= c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "Phase"), 
                   measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1","G13",
                                  "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
-  names(m.Activ[[i]]) <- c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "Indiv", "PiezoAct")
+  names(m.Activ[[i]]) <- c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "Phase", "Indiv", "PiezoAct")
+  }
+  if(Activ[[i]]$Phase[1]==2) {
+    m.Activ[[i]] <- melt(Activ[[i]], id.vars= c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment",  "Phase"), 
+                         measure.vars=c("G35", "G23", "G24", "G28", "G29", "G22", "T1", "G36", "G27", "G40", "G33", "G20", "G21", "G26",
+                                        "T32", "G31", "G39", "G34", "G37",  "G25", "G38", "G30"))
+    names(m.Activ[[i]]) <- c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "Phase", "Indiv", "PiezoAct")
+  }
 }
 m.Act <- do.call(rbind, m.Activ)
 
@@ -91,71 +104,148 @@ head(m.Act)
 tail(m.Act)
 #m.Act <- m.Act[is.na(m.Act$Date),]
 
-write.csv(m.Act,"Melted\\Melted_PiezoActivity_Phase1.csv", row.names=F)
+#### Write to csv ####
+write.csv(m.Act,"Melted\\Melted_PiezoActivity_bothPhases_new.csv", row.names=F)
+
+
+#### If loops to add Prep_expt column
+#### Takes too long. Avoid for now. Try to optimize? For now do in Excel ####
+m.Act$Prep_expt <- 0
+for(i in 1:length(m.Act$PiezoAct)) {
+  if(m.Act$Phase[i]==1) {
+    if(m.Act$Date[i] %within% 
+       interval(ymd("2019-03-27"), ymd("2019-04-03"))) { # last week of 2wk acclim
+      m.Act$Prep_expt[i] <- "expt"
+    } else if (m.Act$Date[i] %within% 
+               interval(ymd("2019-04-24"), ymd("2019-04-30"))) { # last wk of 4wk
+      m.Act$Prep_expt[i] <- "expt"
+    } else if (m.Act$Date[i] %within% 
+               interval(ymd("2019-05-07"), ymd("2019-05-08"))) { #low sucrose test
+      m.Act$Prep_expt[i] <- "expt"
+    } else if (m.Act$Date[i] %within% 
+               interval(ymd("2019-05-27"), ymd("2019-06-03"))) { #last week of expt HCS
+      m.Act$Prep_expt[i] <- "expt"
+    } else {
+      m.Act$Prep_expt[i] <- "prep"
+    }
+  }
+  if(m.Act$Phase[i]==2) {
+    if(m.Act$Date[i] %within% 
+           interval(ymd("2019-06-23"), ymd("2019-06-30"))) {
+      m.Act$Prep_expt[i] <- "expt"
+    } else if(m.Act$Date[i] %within% 
+       interval(ymd("2019-07-21"), ymd("2019-07-28"))) {
+      m.Act$Prep_expt[i] <- "expt"
+    } else if (m.Act$Date[i] %within% 
+               interval(ymd("2019-08-01"), ymd("2019-08-05"))) {
+      m.Act$Prep_expt[i] <- "expt"
+    } else if (m.Act$Date[i] %within% 
+               interval(ymd("2019-08-21"), ymd("2019-08-29"))) {
+      m.Act$Prep_expt[i] <- "expt"
+    } else {
+      m.Act$Prep_expt[i] <- "prep"
+    }
+  }
+}
+
 
 
 #### Organizing time and date column ####
-## Do this again so that factor is converted back to POSIXct
+## Do this again so that factor is converted back to POSIXct if reading in from csv
+## If reading in from newly written csv, 
+##... make sure to add Prep_expt column in Excel
 ## Add date column, without missing rows/times
 m.Act$Date <- as.POSIXct(paste(paste(m.Act$Day2, m.Act$Month, m.Act$Year, sep="/"),
                                paste(m.Act$Hour2, m.Act$Minute, sep=":")), 
                          format = "%d/%m/%Y %H:%M", tz="America/Anchorage")
 
+## Make two separate data frames for Phase 1 and Phase 2
+m.Act1 <- m.Act[m.Act$Phase==1,]
+#m.Act1 <- m.Act1[order(m.Act1$Chamber, m.Act1$Date),]
+m.Act2 <- m.Act[m.Act$Phase==2,]
+#m.Act2 <- m.Act2[order(m.Act2$Chamber, m.Act2$Date),]
+
+## Process phase 1 and phase 2 files
+processAct <- function(genAct){
 ## Calculate time difference between rows
-n <- length(m.Act$Date)
-#m.Act <- InsertRow(m.Act, rep(NA,ncol(m.Act)), 1)
-#m.Act$Date[1] <- as.POSIXct(paste(paste(m.Act$Day2[2], m.Act$Month[2], m.Act$Year[2], sep="/"), 
+n <- length(genAct$Date)
+#genAct <- InsertRow(genAct, rep(NA,ncol(genAct)), 1)
+#genAct$Date[1] <- as.POSIXct(paste(paste(genAct$Day2[2], genAct$Month[2], genAct$Year[2], sep="/"), 
                          # "00:00:01"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-head(m.Act)
-m.Act$Time_diff <- NA
-m.Act$Time_diff[2:n] <- m.Act$Date[2:n]-m.Act$Date[1]
-m.Act$Time_diff[1] <- 0
-head(m.Act)
+head(genAct)
+genAct$Time_diff <- NA
+genAct$Time_diff[2:n] <- genAct$Date[2:n]-genAct$Date[1]
+genAct$Time_diff[1] <- 0
+head(genAct)
 
 ## To make Time_diff column think 0 = midnight of the start date
-Day_start <- as.POSIXct(paste(paste(m.Act$Day2[1], m.Act$Month[1], m.Act$Year[1], sep="/"), 
+Day_start <- as.POSIXct(paste(paste(genAct$Day2[1], genAct$Month[1], genAct$Year[1], sep="/"), 
                                    "00:00:00"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-time_diff_from_start <- as.numeric(60*60*(m.Act$Date[1]- Day_start)) ## Convert hours to seconds
+time_diff_from_start <- as.numeric(60*60*(genAct$Date[1]- Day_start)) ## Convert hours to seconds
 
-m.Act$Time_diff2 <- m.Act$Time_diff+time_diff_from_start
+genAct$Time_diff2 <- genAct$Time_diff+time_diff_from_start
 
-m.Act$Time_diff_Treatment <- m.Act$Time_diff2
+genAct$Time_diff_Treatment <- genAct$Time_diff2 ## will shift this later
 
-m.Activity <- m.Act
-m.Activity$Treatment <- factor(m.Activity$Treatment, 
+
+genAct$Treatment <- factor(genAct$Treatment, 
                                levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
-anim_cham <- meta_full[,c("Indiv", "Chamber")]
-m.Activity <- merge(m.Activity,anim_cham,by="Indiv")
+anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "Chamber")] ## Comment out ****
+#anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "Chamber")] ## Comment in ****
+m.Activity <- merge(genAct,anim_cham,by="Indiv")
 m.Activity <- m.Activity[order(m.Activity$Chamber, m.Activity$Date),]
-head(m.Activity)
+return(m.Activity)
+}
 
-## CHANGE when including phase 2 animals
+m.Activity1 <- processAct(m.Act1)
+head(m.Activity1)
+## Before running line switch out the starred lines above, and rerun "processAct"
+m.Activity2 <- processAct(m.Act2) 
+head(m.Activity2)
+tail(m.Activity2)
+
 ## Looking at non-shifted graphs, creating new 'shofted' 'time_diff' column
 ## shifting 4 week short photoperiod animals 3 hours earlier; shifting HCS animals 3.5 hours earlier.
-m.Activity$Time_diff_Treatment[m.Activity$Treatment=="4WeekPhotoperiod" & m.Activity$Chamber<12] <- 
-  m.Activity$Time_diff_Treatment[m.Activity$Treatment=="4WeekPhotoperiod" & m.Activity$Chamber<12]+(3*3600)
+m.Activity1$Time_diff_Treatment[m.Activity1$Treatment=="4WeekPhotoperiod" & m.Activity1$Chamber<12] <- 
+  m.Activity1$Time_diff_Treatment[m.Activity1$Treatment=="4WeekPhotoperiod" & m.Activity1$Chamber<12]+(3*3600)
 
-m.Activity$Time_diff_Treatment[m.Activity$Treatment=="HighSucrose" & m.Activity$Chamber<12] <- 
-  m.Activity$Time_diff_Treatment[m.Activity$Treatment=="HighSucrose" & m.Activity$Chamber<12]+(3.5*3600)
+m.Activity1$Time_diff_Treatment[m.Activity1$Treatment=="HighSucrose" & m.Activity1$Chamber<12] <- 
+  m.Activity1$Time_diff_Treatment[m.Activity1$Treatment=="HighSucrose" & m.Activity1$Chamber<12]+(3.5*3600)
+
+### CHANGE THIS AFTER LOOKING AT PHASE SHIFT
+m.Activity2$Time_diff_Treatment[m.Activity2$Treatment=="4WeekPhotoperiod" & m.Activity2$Chamber<12] <- 
+  m.Activity$Time_diff_Treatment[m.Activity2$Treatment=="4WeekPhotoperiod" & m.Activity2$Chamber<12]+(3*3600)
+
+m.Activity2$Time_diff_Treatment[m.Activity2$Treatment=="HighSucrose" & m.Activity2$Chamber<12] <- 
+  m.Activity2$Time_diff_Treatment[m.Activity2$Treatment=="HighSucrose" & m.Activity2$Chamber<12]+(3.5*3600)
+
 
 #m.Activity <- m.Activity[complete.cases(m.Activity),]
 
 ## for behavr processing
-dt.act <- data.table::data.table(m.Activity, key='Chamber')
+processBehvr <- function(genAct){
+dt.act <- data.table::data.table(genAct, key='Chamber')
 names(dt.act)[names(dt.act) == 'Chamber'] <- 'id'
 
 #dt.act <- dt.act[order(dt.act$Chamber,dt.act$Date)]
-dt.meta <- data.table::data.table(meta_activ, key="Chamber")
+dt.meta <- data.table::data.table(meta_activ1, key="Chamber") ## Comment out ****
+#dt.meta <- data.table::data.table(meta_activ2, key="Chamber") ## Comment in ****
 
 names(dt.meta)[names(dt.meta) == 'Chamber'] <- 'id'
 
 beh.act <-behavr(dt.act,metadata = dt.meta)
 beh.act$t <- beh.act$Time_diff2
 #beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
-summary(beh.act, detailed=T)
+#summary(beh.act, detailed=T)
 #beh.act <- beh.act[order(beh.act$Chamber,beh.act$Date)]
-head(beh.act)
-tail(beh.act)
+return(beh.act)
+}
+
+beh.act1 <- processBehvr(m.Activity1)
+head(beh.act1)
+## Before running the next two lines switch starred comment out and in lines above & rerun processBehvr
+beh.act2 <- processBehvr(m.Activity2) 
+tail(beh.act2)
 
 ## Shifted 't' column earlier by 4 hours,
 #just for !2wkacclim short photoperiod individuals, like subjective day
@@ -199,14 +289,14 @@ ggetho(beh.act, aes(x=t, y=interaction(id, mean_activ, Photoperiod, sep = " : ")
   stat_tile_etho() + my_theme
 
 ## Use bars instead of tiles
-ggetho(beh.act, aes(x=t, y=interaction(id, mean_activ, Photoperiod, sep = " : "), z=PiezoAct)) +
+ggetho(beh.act2, aes(x=t, y=interaction(id, Photoperiod, sep = " : "), z=PiezoAct)) +
   stat_bar_tile_etho() + my_theme
 
 ## Population graphs
 ggetho(beh.act, aes(x=t, y=PiezoAct, color=Photoperiod)) + stat_pop_etho() + facet_grid(Sex~.) + my_theme
 
 ##Population level, all indivs; excluding 2 week acclim; faceted by photoperiod
-ggetho(beh.act[Treatment != "2WeekAcclimation",], 
+ggetho(beh.act2[Treatment != "2WeekAcclimation",], 
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + facet_grid(Photoperiod~.) + my_theme
 
 
@@ -296,7 +386,7 @@ ggetho(beh.act_shift[beh.act_shift$Prep_expt=="expt" & beh.act_shift$Treatment==
 
 ##Population level, all short photoperiod indivs; just last week of 4 week
 ggetho(beh.act_shift[beh.act_shift$Prep_expt=="expt" & 
-                                        beh.act_shift$Treatment=="4WeekPhotoperiod" & beh.act$id<13,], 
+                                        beh.act_shift$Treatment=="4WeekPhotoperiod" & beh.act_shift$id<13,], 
                         aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24), 
                         time_offset = hours(4)) + 
   stat_pop_etho() + #facet_grid(Photoperiod~.) + 
@@ -308,9 +398,27 @@ ggetho(beh.act_shift[beh.act_shift$Prep_expt=="expt" &
 ## Synced
 grid.arrange(pop_short_HCS, pop_long_HCS)
 
+## Non-shifted, trying out phase 2 animals
+##Population level, all short photoperiod indivs; just last week of 4 week
+ggetho(beh.act1[beh.act1$Prep_expt=="expt" & 
+                       beh.act1$Treatment=="4WeekPhotoperiod" & beh.act1$id<13,], 
+       aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod)) +#, time_wrap = hours(24)) +#, 
+       #time_offset = hours(4)) + 
+  stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme  + ggtitle("4 Week Photoperiod") + #ylim(0,3) + 
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) #+
+  scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
+
+
 ## Population graph single individual, short
 pop_short_indiv <- ggetho(beh.act[Treatment != "2WeekAcclimation" & beh.act$id=="2"], 
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho()  + my_theme +
+  scale_color_manual(values="blue")
+
+## Population graph single individual, short
+pop_short_indiv <- ggetho(beh.act2[Treatment != "2WeekAcclimation" & beh.act2$id=="2"], 
+                          aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho()  + my_theme +
   scale_color_manual(values="blue")
 
 ## Population graph, single individual, long
@@ -358,7 +466,7 @@ ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my
 ## VERY NICE For all individuals
 ## Double-plotted actograms by individual, tiles, viridis
 ## Only x-labels every 6 hours; 3 is too crammed
-ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+ggetho(beh.act2, aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
   facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
   scale_fill_viridis()
 
@@ -378,9 +486,16 @@ ggetho(beh.act[beh.act$id>12,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile
 
 
 ## For just one individual, T13; long photoperiod
-ggetho(beh.act[beh.act$id=="24",],
+ggetho(beh.act1[beh.act1$id=="24",],
        aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho(fill="red") + my_theme +
   scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## For just one individual, phase 2; long photoperiod
+ggetho(beh.act2[beh.act2$id=="20",],
+       aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3)) +
+  scale_fill_viridis() +
+  theme(axis.text.y = element_text(angle=0, size=8))
 
 ## LD in the background, long photoperiod T13
 ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
@@ -389,7 +504,7 @@ ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x
 
 ## For Cory
 ## OVERALL including 2 week acclim, viridis, Tiled, long photoperiod T13
-ggetho(beh.act[beh.act$id=="24",], aes(x=t, z=PiezoAct), multiplot=2) +
+ggetho(beh.act2[beh.act2$id=="22",], aes(x=t, z=PiezoAct), multiplot=2) +
   stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
   stat_tile_etho() + my_theme2 + theme(axis.text.y = element_blank()) +
   #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
