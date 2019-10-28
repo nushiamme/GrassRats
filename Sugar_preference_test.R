@@ -353,7 +353,7 @@ mod_2_8_noIndiv_noTreatment <- lm(Prop_sugar~sugar_conc_factor, data=conc_2_8)
 #plot(allEffects(mod_2_8_noIndiv_noTreatment))
 
 ## Best model here
-mod_2_8_noTreatment <- lmer(Prop_sugar~sugar_conc_factor+(1|Indiv), data=conc_2_8)
+mod_2_8_noTreatment <- lmer(Prop_sugar~sugar_conc_factor+(1|Indiv), data=conc_2_8)#[!is.na(conc_2_8$sugar_conc_factor),])
 summary(mod_2_8_noTreatment)
 anova(mod_2_8_noTreatment)
 qqnorm(resid(mod_2_8_noTreatment))
@@ -388,27 +388,53 @@ ggplot(conc_8, aes(Fed_sugarsoln_g, Fed_water_g)) + geom_point() + geom_smooth(m
 
 ggplot(conc_8, aes(as.factor(Chamber), Prop_sugar)) + geom_boxplot(aes(fill=sugar_conc_factor))
 
+conc_8$Treatment <- droplevels(conc_8$Treatment)
+
 ## Lmer model of proportion of liquid consumed that was sugar solution
-mod_prop_sugar_full <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+(1|Treatment)+(1|Sex) + (1|Indiv) + DaySinceStart, data=conc_8)
+mod_prop_sugar_full <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+Treatment+Sex + (1|Indiv) + DaySinceStart, 
+                            data=conc_8[!is.na(conc_8$Prop_sugar),])
 summary(mod_prop_sugar_full)
 plot(mod_prop_sugar)
 
-mod_prop_sugar_full_noDay <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+(1|Treatment)+(1|Sex) + (1|Indiv), data=conc_8)
+## Cody: Sex is a fixed effect because random effects don't make sense until there's 6-7 factors
+mod_prop_sugar_full_noDay <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+Treatment+Sex + (1|Indiv), 
+                                  data=conc_8[!is.na(conc_8$Prop_sugar),])
 summary(mod_prop_sugar_full_noDay)
 
-mod_prop_sugar_interac <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor*Treatment+(1|Sex) + (1|Indiv), data=conc_8)
+mod_prop_sugar_interac <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor*Treatment+Sex + (1|Indiv), 
+                               data=conc_8[!is.na(conc_8$Prop_sugar),],REML=F)
 summary(mod_prop_sugar_interac)
 
-mod_prop_sugar_noMass <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Sex) + (1|Indiv), data=conc_8)
+mod_prop_sugar_noMass <- lmer(Prop_sugar~sugar_conc_factor+Treatment+Sex + (1|Indiv), 
+                              data=conc_8[!is.na(conc_8$Prop_sugar),])
 summary(mod_prop_sugar_noMass)
 
+
+## Cody: run glm model without individual as a random effect, just to see what the estimates look like
+## Create a TreatmentConc column that has 2x2 of values from both factors so that all of them show in the
+## model; for some reason one level is getting dropped in lmer and glm otherwise
+conc_8$TreatmentConc <- paste0(conc_8$Treatment, conc_8$sugar_conc_factor)
+g.propsugar <- glm(Prop_sugar~TreatmentConc, 
+    data=conc_8[!is.na(conc_8$Prop_sugar),])
+
+
+boxplot(g.propsugar$residuals~conc_8$Indiv[!is.na(conc_8$Prop_sugar)])       
+      
+
+
+                        
 ## Best model
-mod_prop_sugar_noMassSex <- lmer(Prop_sugar~sugar_conc_factor+Treatment + (1|Indiv), data=conc_8)
+mod_prop_sugar_noMassSex <- lmer(Prop_sugar~TreatmentConc + (1|Indiv)-1, 
+                                 data=conc_8[!is.na(conc_8$Prop_sugar),])
 summary(mod_prop_sugar_noMassSex)
 plot(mod_prop_sugar_noMassSex)
 coef(mod_prop_sugar_noMassSex)
 plot(ranef(mod_prop_sugar_noMassSex))
-plot(residuals(mod_prop_sugar_noMassSex))  ## What is index??
+residuals(mod_prop_sugar_noMassSex)
+boxplot(residuals(mod_prop_sugar_noMassSex)~conc_8$Indiv[!is.na(conc_8$Prop_sugar)])  ## What is index??
+
+boxplot(mod_prop_sugar_noMassSex$Intercept~conc_8$Indiv[!is.na(conc_8$Prop_sugar)])       
+
 
 ### RUN model with 2% consumption vs. 8%
 ### Consumption across time as a fixed effect - Day of the experiment
@@ -417,7 +443,8 @@ plot(residuals(mod_prop_sugar_noMassSex))  ## What is index??
 mod_2_8 <- lmer(Prop_sugar~conc)
 
 
-mod_prop_sugar_JustSugar <- lmer(Prop_sugar~sugar_conc_factor + (1|Indiv), data=conc_8)
+mod_prop_sugar_JustSugar <- lmer(Prop_sugar~sugar_conc_factor + (1|Indiv), 
+                                 data=conc_8[!is.na(conc_8$Prop_sugar),])
 summary(mod_prop_sugar_JustSugar)
 
 mod_prop_sugar_noIndiv <- lm(Prop_sugar~sugar_conc_factor, data=conc_8) 

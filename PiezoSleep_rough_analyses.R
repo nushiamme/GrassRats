@@ -264,11 +264,23 @@ m.presugar$Sugar <- "Pre"
 m.postsugar$Sugar <- "Post"
 
 bound_prepost_sugar <- rbind(m.presugar, m.postsugar)
+bound_prepost_sugar <- bound_prepost_sugar[!is.na(bound_prepost_sugar$Sleep_bout),]
+bound_prepost_sugar$TreatmentSugar <- paste0(bound_prepost_sugar$Treatment, bound_prepost_sugar$Sugar)
+
+bound_prepost_sugar$Time <- 
+    sapply(strsplit(as.character(bound_prepost_sugar$DateTime), "[/ ]+"), "[", 2)
+
+bound_prepost_sugar$Hour <- 
+  sapply(strsplit(as.character(bound_prepost_sugar$Time), ":"), "[", 1)
+bound_prepost_sugar$Hour <- as.numeric(bound_prepost_sugar$Hour)
+bound_prepost_sugar$Hour2 <- bound_prepost_sugar$Hour
+bound_prepost_sugar$Hour2[bound_prepost_sugar$Hour2>12] <- bound_prepost_sugar$Hour2[bound_prepost_sugar$Hour2>12]-24
+
+#Subtract 24 from anything >12
 
 ## Sleep bout plot
 ggplot(m.presugar, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatment, scales="free_x") + my_theme +
   ylab("Sleep bout (s)")
-
 
 ggplot(m.postsugar, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatment, scales="free_x") + my_theme +
   ylab("Sleep bout (s)")
@@ -276,7 +288,8 @@ ggplot(m.postsugar, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatme
 ggplot(bound_prepost_sugar, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(Sugar~Treatment, scales="free_x") + 
   my_theme + ylab("Sleep bout (s)")
 
-mod_sleepbout_SugarTreatmentIndiv <- lmer(Sleep_bout~Treatment+Sugar+(1|ID), data=bound_prepost_sugar)
+mod_sleepbout_SugarTreatmentIndiv <- lmer(Sleep_bout~-1+(Hour)^2+TreatmentSugar+(1|ID), 
+                                          data=bound_prepost_sugar[!is.na(bound_prepost_sugar$Sleep_bout),])
 summary(mod_sleepbout_SugarTreatmentIndiv)
 plot(mod_sleepbout_SugarTreatmentIndiv)
 

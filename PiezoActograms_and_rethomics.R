@@ -190,8 +190,8 @@ genAct$Time_diff_Treatment <- genAct$Time_diff2 ## will shift this later
 
 genAct$Treatment <- factor(genAct$Treatment, 
                                levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
-anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "Chamber")] ## Comment out ****
-#anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "Chamber")] ## Comment in ****
+#anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "Chamber")] ## Comment out ****
+anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "Chamber")] ## Comment in ****
 m.Activity <- merge(genAct,anim_cham,by="Indiv")
 m.Activity <- m.Activity[order(m.Activity$Chamber, m.Activity$Date),]
 return(m.Activity)
@@ -228,8 +228,8 @@ dt.act <- data.table::data.table(genAct, key='Chamber')
 names(dt.act)[names(dt.act) == 'Chamber'] <- 'id'
 
 #dt.act <- dt.act[order(dt.act$Chamber,dt.act$Date)]
-dt.meta <- data.table::data.table(meta_activ1, key="Chamber") ## Comment out ****
-#dt.meta <- data.table::data.table(meta_activ2, key="Chamber") ## Comment in ****
+#dt.meta <- data.table::data.table(meta_activ1, key="Chamber") ## Comment out ****
+dt.meta <- data.table::data.table(meta_activ2, key="Chamber") ## Comment in ****
 
 names(dt.meta)[names(dt.meta) == 'Chamber'] <- 'id'
 
@@ -504,11 +504,27 @@ ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x
 
 ## For Cory
 ## OVERALL including 2 week acclim, viridis, Tiled, long photoperiod T13
-ggetho(beh.act2[beh.act2$id=="22",], aes(x=t, z=PiezoAct), multiplot=2) +
+ggetho(beh.act1[beh.act1$id=="24" & beh.act1$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
   stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
   stat_tile_etho() + my_theme2 + theme(axis.text.y = element_blank()) +
   #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
-  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
+  scale_fill_viridis() + ylab("Time (48h intervals)") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## OVERALL including 2 week acclim, viridis, Tiled, long photoperiod T13
+ggetho(beh.act1[beh.act1$id=="24" & beh.act1$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Time (48h intervals)") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## OVERALL including 2 week acclim, viridis, Tiled, short photoperiod 
+ggetho(beh.act1[beh.act1$id=="3" & beh.act1$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("Time (48h intervals)") + xlab("Time (hours)") +
   scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
 
 ## For Cory
