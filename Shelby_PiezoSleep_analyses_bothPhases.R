@@ -11,6 +11,8 @@ library(gridExtra)
 require(lmerTest)
 require(multcomp) ## for glht for plotting lmer result
 require(CATkit) ## For circadian analyses
+library(effects) ## For plotting model effects
+#library(dplyr) ## Just to rename a column in bound_prepost_sugar
 
 ## Set wd
 #setwd("E:/Piezo_data/SleepBout_histogram_/") ## For Shelby
@@ -25,17 +27,18 @@ piezoday_4wk1 <- read.csv("4WeekPhotoperiod_24Apr2019_combined_with_sub_day.csv"
 piezoday_2wk1 <- read.csv("2WeekAcclimation_26Mar2019_longTime.csv")
 piezoday_LowSugar1 <- read.csv("LowSucrose_andTest_07May2019_combined_with_sub_day.csv")
 piezoday_HighSugar1 <- read.csv("HighSucrose_29May2019_combined_with_sub_day.csv")
-#piezoday_presugar_bouts1 <- read.csv("4WeekPhotoperiod_24Apr2019SleepBout_MeanSB.csv")
-piezoday_postsugar_bouts1 <- read.csv("..\\SleepBout_histogram_files\\HighSucrose_29May2019SleepBout_MeanSB_processed.csv") ## For mean hourly sleep bouts
+#piezoday_presugar_bouts1 <- read.csv("..\\SleepBout_histogram_files\\4WeekPhotoperiod_24Apr2019SleepBout_MeanSB.csv")
+#piezoday_postsugar_bouts1 <- read.csv("..\\SleepBout_histogram_files\\HighSucrose_29May2019SleepBout_MeanSB_processed.csv") ## For mean hourly sleep bouts
 postsugar_percbouts1 <- read.csv("..\\SleepBout_histogram_files\\HighSucrose_29May2019_PercentHourlySleep_processed.csv") ## For mean hourly sleep bouts
 
+bound_prepost_sugar <- read.csv("HourlySleepBouts_PrePostSugar.csv")
 
 piezoday_4wk2 <- read.csv("Phase2_4WeekPhotoperiod_22Jul2019_combined_with_sub_day.csv")
 piezoday_2wk2 <- read.csv("Phase2_2WeekAcclimation_19Jun2019_long.csv")
 piezoday_LowSugar2 <- read.csv("Phase2_LowSucroseTest_03Aug2019_combined_with_sub_day.csv")
 piezoday_HighSugar2 <- read.csv("Phase2_8%sucrose_21Aug2019_combined_with_sub_day.csv") ## Removed G28
-#piezoday_presugar_bouts2 <- read.csv("Phase2_4WeekPhotoperiod_22Jul2019SleepBout_MeanSB.csv")
-#piezoday_postsugar_bouts2 <- read.csv("Phase2_8%sucrose_21Aug2019SleepBout_MeanSB.csv")
+#piezoday_presugar_bouts2 <- read.csv("..\\Phase2_SleepBout_histogram_files\\Phase2_4WeekPhotoperiod_22Jul2019SleepBout_MeanSB.csv")
+#piezoday_postsugar_bouts2 <- read.csv("..\\Phase2_SleepBout_histogram_files\\Phase2_8%sucrose_21Aug2019SleepBout_MeanSB.csv")
 
 #sugar <- read.csv("Sugar_conc_1_2.csv") #Don't need this, it's in the anim_ID_sex dataframe now
 
@@ -224,10 +227,10 @@ m.piezobout_HighSugar2 <- melt(piezoday_HighSugar2, id.vars= c("MOUSE_ID", "TEST
                                                                                                        "BOUTLENGTHDAY7", "BOUTLENGTHTOT8",
                                                                                                        "BOUTLENGTHNITE8", "BOUTLENGTHDAY8"))
 
-#### Mean hourl sleep bout length ####
-
+#### Mean hourly sleep bout length ####
+## CAUTION DO NOT RUN IF TRYING OUT HOURLY SLEEP MODELS OR PLOTS
 ## Right now just cheating and procesing perentage bouts as if that dataframe is the mean sleep bouts one
-piezoday_postsugar_bouts1 <- postsugar_percbouts1
+#piezoday_postsugar_bouts1 <- postsugar_percbouts1
 m.postsugar_bouts1 <- melt(piezoday_postsugar_bouts1, 
                            id.vars=c("Date","Day", "Month", "Year", "Hour", "Minute", "am_pm"), 
                            measure.vars=c("G9", "G5","G14","G16", "G18", "G10",
@@ -330,6 +333,7 @@ ggplot(m.postsugar_bouts1, aes(Hour_shifted,value)) +
   scale_x_continuous(breaks =seq(0,24,3)) +
   scale_color_manual(values = c("#F38BA8", "#23988aff")) +
   scale_fill_manual(values = c("#F38BA8", "#23988aff"))
+
   
   
   
@@ -429,13 +433,12 @@ head(m.piezobout_long)
 head(m.piezoday_short)
 head(m.piezobout_short)
 
-#### Sugar files - Ignore for now, Sept 15, 2019####
-
+#### Sugar files - DON'T RERUN unless base files changed; wrote to csv ####
 ### Processing sleep bout length changes before and after sugar
 m.presugar1 <- melt(piezoday_presugar_bouts1, id.vars="Mouse.IDs.", 
                    measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
                                   "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
-m.postsugar1 <- melt(piezoday_postsugar_bouts1, id.vars="Mouse.IDs.", 
+m.postsugar1 <- melt(piezoday_postsugar_bouts1, id.vars="Date", 
                     measure.vars=c("G9", "G5", "G14", "G16", "G18", "G10", "G8", "G2", "T10", "T5", "T17", "T12", "G4", "G1",
                                    "G13", "G17", "G19", "G11", "G12",  "G3", "T9", "T11", "T19", "T13"))
 
@@ -497,7 +500,51 @@ m.postsugar2$Sugar <- "Post"
 ## BIND ALL Phase 1 and phase 2, for a total of 4 data frames (one pre- and one post-sugar for each phase)
 bound_prepost_sugar <- rbind(m.presugar1, m.presugar2, m.postsugar1, m.postsugar2)
 
-## Sleep bout plot
+## Added Oct 28, 2019
+bound_prepost_sugar <- bound_prepost_sugar[!is.na(bound_prepost_sugar$Sleep_bout),]
+bound_prepost_sugar$TreatmentSugar <- paste0(bound_prepost_sugar$Treatment, bound_prepost_sugar$Sugar)
+
+## Adding an 'hour' column
+## First make sure all the dates are in the same format
+bound_prepost_sugar$datetime.posix <- as.POSIXct(bound_prepost_sugar$DateTime, 
+                                                 format = "%Y/%m/%d %H:%M", tz="America/Anchorage")
+bound_prepost_sugar$Time <- 
+  sapply(strsplit(as.character(bound_prepost_sugar$datetime.posix), "[/ ]+"), "[", 2)
+
+bound_prepost_sugar$datetime.posix[is.na(bound_prepost_sugar$Time)] <- 
+  as.POSIXct(bound_prepost_sugar$DateTime[is.na(bound_prepost_sugar$Time)], 
+                                                 format = "%Y-%m-%d %H:%M", tz="America/Anchorage")
+bound_prepost_sugar$Time[is.na(bound_prepost_sugar$Time)] <- 
+  sapply(strsplit(as.character(bound_prepost_sugar$datetime.posix[is.na(bound_prepost_sugar$Time)]), "[/ ]+"), "[", 2)
+
+bound_prepost_sugar$datetime.posix[is.na(bound_prepost_sugar$Time)] <- 
+  as.POSIXct(bound_prepost_sugar$DateTime[is.na(bound_prepost_sugar$Time)], 
+                                                 format = "%m/%d/%Y %H:%M", tz="America/Anchorage")
+bound_prepost_sugar$Time[is.na(bound_prepost_sugar$Time)] <- 
+  sapply(strsplit(as.character(bound_prepost_sugar$datetime.posix[is.na(bound_prepost_sugar$Time)]), "[/ ]+"), "[", 2)
+
+bound_prepost_sugar$Hour <- 
+  sapply(strsplit(as.character(bound_prepost_sugar$Time), ":"), "[", 1)
+
+bound_prepost_sugar[is.na(bound_prepost_sugar$Time),]
+
+bound_prepost_sugar$Hour <- as.numeric(bound_prepost_sugar$Hour)
+bound_prepost_sugar$Hour2 <- bound_prepost_sugar$Hour
+bound_prepost_sugar$Hour2[bound_prepost_sugar$Hour2>12] <- bound_prepost_sugar$Hour2[bound_prepost_sugar$Hour2>12]-24
+
+bound_prepost_sugar <- bound_prepost_sugar %>% rename(GrassRat_ID = ID) 
+bound_prepost_sugar <- merge(bound_prepost_sugar,
+                             y = anim_ID_sex[,c("GrassRat_ID", "Chamber", "Sex", "Sugar_conc")], 
+                             by = "GrassRat_ID")
+
+## G28 seeems to have been unplugged Aug 21-Aug 30, need to check records. Removing for now
+bound_prepost_sugar$Sleep_bout[bound_prepost_sugar$GrassRat_ID=="G28" & bound_prepost_sugar$Sleep_bout>3000] <- "NA" 
+bound_prepost_sugar$Sleep_bout <- as.numeric(as.character(bound_prepost_sugar$Sleep_bout))
+bound_prepost_sugar <- bound_prepost_sugar[!is.na(bound_prepost_sugar$Sleep_bout),]
+
+write.csv(bound_prepost_sugar, "HourlySleepBouts_PrePostSugar.csv")
+
+#### Sleep bout plot ####
 
 m.presugar <- rbind(m.presugar1, m.presugar2)
 
@@ -516,29 +563,112 @@ ggplot(m.postsugar1, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatm
 ggplot(m.postsugar2, aes(ID, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatment, scales="free_x") + my_theme +
   ylab("Sleep bout (s)") + ggtitle("Postsugar_Phase 2")
 
-ggplot(bound_prepost_sugar, aes(ID, Sleep_bout)) + geom_boxplot() + 
+ggplot(bound_prepost_sugar, aes(GrassRat_ID, Sleep_bout)) + geom_boxplot() + 
   facet_grid(Sugar~Treatment, scales="free_x") + 
-  my_theme + ylab("Sleep bout (s)") + ggtitle("Presugar and Postsugar for Both Phases")
+  my_theme + ylab("Sleep bout (s)") + ggtitle("Presugar and Postsugar for Both Phases") +
+  theme(axis.text.x = element_text(angle=90))
 
-#mod_sleepbout_SugarTreatmentIndiv <- lmer(Sleep_bout~Treatment+Sugar+(1|ID), data=bound_prepost_sugar)
-#summary(mod_sleepbout_SugarTreatmentIndiv)
-#plot(mod_sleepbout_SugarTreatmentIndiv)
+ggplot(bound_prepost_sugar, aes(as.factor(as.character(Hour)), Sleep_bout)) + geom_boxplot() + 
+  facet_grid(Sugar~Treatment, scales="free_x") + 
+  my_theme + ylab("Sleep bout (s)") + ggtitle("Presugar and Postsugar for Both Phases") +
+  theme(axis.text.x = element_text(angle=90))
 
-#mod_sleepbout_SugarIndiv <- lmer(Sleep_bout~Sugar+(1|ID), data=bound_prepost_sugar)
-#summary(mod_sleepbout_SugarIndiv)
-#plot(mod_sleepbout_SugarIndiv)
 
-#mod_sleepbout_Sugar <- lm(Sleep_bout~Sugar, data=bound_prepost_sugar)
-#summary(mod_sleepbout_Sugar)
+## Column for whether they got sugar or not.
+## Random effect of day, ID
+## Subj day/night column to label each row
+# Plot of mean hourly sleep bout duration, 
+## grouped by subj day/night, boxplots per subj day/night colored by sugar and photoperiod
 
-#anova(mod_sleepbout_SugarIndiv, mod_sleepbout_SugarTreatmentIndiv)
-#anova(mod_sleepbout_Sugar)
+### DO THIS
+## stat_pop_etho plots for neutral/short, and postsugar, 0% vs 8% (these two on the same plots). Facet by photoperiod 
+## vs. hour shifted (subjective day/night)
 
-#mod_daily_bout_sugar <- lmer(value~Treatment+Sex+Photoperiod+Sugar+(1|Chamber),data=m.piezobout_combined[m.piezobout_combined$DayNightTot=="Total",])
-#anova(mod_daily_bout_sugar)
+#### DO ########
+
+mod_sleepbout_SugarHourTreatmentIndiv <- lmer(Sleep_bout~-1+(Hour^2)+TreatmentSugar+(1|GrassRat_ID), 
+                                          data=bound_prepost_sugar)
+summary(mod_sleepbout_SugarHourTreatmentIndiv)
+summary(mod_sleepbout_SugarHourTreatmentIndiv)
+plot(mod_sleepbout_SugarHourTreatmentIndiv)
+coef(mod_sleepbout_SugarHourTreatmentIndiv)
+plot(residuals(mod_sleepbout_SugarHourTreatmentIndiv)~
+       bound_prepost_sugar$GrassRat_ID)
+
+mod_sleepbout_SugarTreatmentIndiv <- lmer(Sleep_bout~-1+TreatmentSugar+(1|GrassRat_ID), 
+                                          data=bound_prepost_sugar)
+summary(mod_sleepbout_SugarTreatmentIndiv)
+
+mod_sleepbout_SugarIndiv <- lmer(Sleep_bout~-1+Sugar+(1|GrassRat_ID), data=bound_prepost_sugar)
+summary(mod_sleepbout_SugarIndiv)
+plot(mod_sleepbout_SugarIndiv)
+
+mod_sleepbout_Sugar <- lm(Sleep_bout~Sugar, data=bound_prepost_sugar)
+summary(mod_sleepbout_Sugar)
+
+anova(mod_sleepbout_SugarIndiv, mod_sleepbout_SugarTreatmentIndiv, mod_sleepbout_SugarHourTreatmentIndiv)
+anova(mod_sleepbout_Sugar)
+
+plot(allEffects(mod_sleepbout_SugarHourTreatmentIndiv))
+plot(allEffects(mod_sleepbout_SugarHourTreatmentIndiv, partial.residuals=T))
+
+
+mod_daily_bout_sugar <- lmer(value~Treatment+Sex+ShortLong+Sugar+(1|Chamber),data=m.piezobout_combined[m.piezobout_combined$DayNightTot=="Total",])
+anova(mod_daily_bout_sugar)
+
+## Histograms of sleep bout length faceted by photoperiod
+ggplot(bound_prepost_sugar[!is.na(bound_prepost_sugar$Sleep_bout),], aes(Sleep_bout)) + geom_histogram() + facet_grid(.~Treatment)
+
+## Plotting sleep bouts per individual across treatments and phases
+ggplot(bound_prepost_sugar[!is.na(bound_prepost_sugar$Sleep_bout),], 
+       aes(GrassRat_ID, Sleep_bout)) + geom_boxplot(aes(fill=TreatmentSugar)) + 
+  facet_grid(.~Phase, scales='free_x') + my_theme + theme(axis.text.x = element_text(angle=90))
+
+
+ggplot(bound_prepost_sugar[!is.na(bound_prepost_sugar$Sleep_bout),], 
+       aes(TreatmentSugar, Sleep_bout)) + geom_boxplot(aes(fill=TreatmentSugar)) + 
+  facet_grid(.~Phase, scales='free_x') + my_theme + theme(axis.text.x = element_text(angle=90))
+
 
 ggplot(bound_prepost_sugar, aes(Sleep_bout)) + geom_histogram() + facet_grid(.~Treatment)
 ggplot(bound_prepost_sugar, aes(Sugar, Sleep_bout)) + geom_boxplot() + facet_grid(.~Treatment) + my_theme + ggtitle("Sleep_bout Duration vs Sugar")
+
+bound_prepost_sugar$Hour_shifted <- bound_prepost_sugar$Hour
+bound_prepost_sugar$Hour_shifted[bound_prepost_sugar$Treatment=="Short" & bound_prepost_sugar$Phase==2] <- 
+  bound_prepost_sugar$Hour[bound_prepost_sugar$Treatment=="Short" & bound_prepost_sugar$Phase==2]+3
+## If combining pre and post sugar in hourly_shifted plot, this seems to be shifted by 4 instead of 3
+bound_prepost_sugar$Hour_shifted[bound_prepost_sugar$Treatment=="Short" & bound_prepost_sugar$Phase==1] <- 
+  bound_prepost_sugar$Hour[bound_prepost_sugar$Treatment=="Short" & bound_prepost_sugar$Phase==1]+3
+bound_prepost_sugar$Hour_shifted[bound_prepost_sugar$Hour_shifted==24] <- 0
+bound_prepost_sugar$Hour_shifted[bound_prepost_sugar$Hour_shifted==25] <- 1
+bound_prepost_sugar$Hour_shifted[bound_prepost_sugar$Hour_shifted==26] <- 2
+bound_prepost_sugar$Hour_shifted[bound_prepost_sugar$Hour_shifted==27] <- 3
+
+## Trying out sleep bout plots per individual, might not be very helpful
+ggplot(bound_prepost_sugar, aes(Hour,Sleep_bout)) + facet_wrap(.~GrassRat_ID) +
+  geom_point(aes(col=Treatment)) + my_theme +
+  geom_smooth(method="loess") +
+  ylab("Mean hourly sleep duration (sec)") + xlab("Hour of day")+
+  scale_x_continuous(breaks =seq(0,24,3)) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff"))
+
+## Trying stat pop graph with sleep bouts instead of percent sleep
+ggplot(bound_prepost_sugar, aes(Hour,Sleep_bout)) + facet_grid(.~Phase) +
+  stat_pop_sleep_trial(aes(col=Treatment, fill=Treatment)) + my_theme +
+  ylab("Mean hourly sleep duration (sec)") + xlab("Hour of day")+
+  scale_x_continuous(breaks =seq(0,24,3)) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff"))
+
+## Mean hourly sleep bout duration, shifted. Can separate by phase or not...
+# and by sugar or not by changing facets.
+ggplot(bound_prepost_sugar, aes(Hour_shifted,Sleep_bout)) + facet_grid(Sugar~Phase) +
+  stat_pop_sleep_trial(aes(col=Treatment, fill=Treatment)) + my_theme +
+  ylab("Mean hourly sleep duration (sec)") + xlab("Hour of day")+
+  scale_x_continuous(breaks =seq(0,24,3)) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff"))
 
 #### Piezo bout and/or day ####
 ## Function to pull the experiment day out of the "variable" column and make it a new one
@@ -651,6 +781,9 @@ mod_sleepbout_Photoperiod_ID <- lmer(value~Photoperiod+(1|GrassRat_ID),
 mod_sleepbout_SugarTreatment_interac <- lmer(value~Sugar*Photoperiod + (1|GrassRat_ID),
                                                       data=m.piezobout_combined_conc[m.piezobout_combined_conc$DayNightTot=="Total",])
 summary(mod_sleepbout_SugarTreatment_interac)
+plot(allEffects(mod_sleepbout_SugarTreatment_interac))
+plot(allEffects(mod_sleepbout_SugarTreatment_interac, partial.residuals=T))
+
 
 anova(mod_sleepbout_full, mod_sleepbout_noSex,
       mod_sleepbout_noSex_noPhotoperiod, 
