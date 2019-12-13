@@ -9,6 +9,8 @@ require(lme4)
 require(lmerTest)
 require(factoextra)
 require(multcomp)
+require(reshape)
+require(forcats) ## for fct_rev function
 
 ## Sew working directory
 setwd("E:\\Ex_Google_Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data")
@@ -31,9 +33,9 @@ my_theme <- theme_classic(base_size = 30) +
 #weights$Date <- as.POSIXct(paste(weights$Day, weights$Month, weights$Year, sep="/"), 
 #                         format = "%d/%m/%Y", tz="America/Anchorage")
 
-weights$Photoperiod <- 0
-weights$Photoperiod[weights$Room=="019D"] <- "Neutral"
-weights$Photoperiod[weights$Room=="019F"] <- "Short"
+#weights$Photoperiod <- 0
+#weights$Photoperiod[weights$Room=="019D"] <- "Neutral"
+#weights$Photoperiod[weights$Room=="019F"] <- "Short"
 weights$Photoperiod_g <- "NA"
 weights$Postsugar_g <- "NA"
 weights$wk_euthanasia_g <- "NA"
@@ -42,15 +44,17 @@ weights$Postsugar_g <- weights$Weight_euthanasia-weights$Weight_presugar
 weights$wk_euthanasia_g <- weights$Weight_euthanasia-weights$Weight_2wk
 
 
-m.weights <- melt(weights, id.vars=c("Individual", "Photoperiod", "Sugar"), 
+m.weights <- melt(weights, id.vars=c("Individual", "Photoperiod", "Sugar", "Age_death"), 
                   measure.vars=c("Photoperiod_g", "Postsugar_g", "wk_euthanasia_g"))
 
+ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(Age_death, value)) + facet_grid(.~Sugar) +
+  geom_point(aes(col=Photoperiod), size=3) + my_theme
 
 ## Mass change Presugar minus 2 week acclim (mass change over 4 week photoperiod phase)
 ggplot(m.weights[m.weights$variable=="Photoperiod_g",], aes(Photoperiod, value)) + 
   geom_boxplot(aes(fill=Photoperiod)) + 
   my_theme + xlab("Photoperiod treatment") + ylab("Mass change (g)") +
-  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  #scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(legend.key.height = unit(3,"line"))
 
 ## Switch high and non sugar order on x-axis
@@ -75,8 +79,43 @@ t.test(m.weights$value[m.weights$variable=="Photoperiod_g" & m.weights$Photoperi
        m.weights$value[m.weights$variable=="Photoperiod_g" & m.weights$Photoperiod=="Short"], paired = F)
 
 m.weights$Sugar <- as.factor(as.character(m.weights$Sugar))
-summary(lm(value~Photoperiod*Sugar, 
-                      data=m.weights[m.weights$variable=="Postsugar_g",]))
+## Using this for Shelby SICB poster
+#lm.wt_age <- lm(value~Photoperiod*Sugar+Age_death, 
+ #                     data=m.weights[m.weights$variable=="Postsugar_g",]) 
+## Using this for Shelby SICB poster
+lm.wt <- glm(value~-1+Photoperiod*Sugar, 
+                data=m.weights[m.weights$variable=="Postsugar_g",], family="gaussian") 
+
+lm.wt$fitted.values ## These are not predictions; these are fitted values and se's or 95% CIs
+## To bind back into dataframe
+cbind(m.weights[m.weights$variable=="Postsugar_g",],lm.wt$fitted.values) 
+summary(lm.wt)
+predict.glm(lm.wt) ## For CIs/se's
+lm.wt_pred <- predict.glm(lm.wt, type="response", interval="confidence", se.fit=T) 
+lm.wt_pred$LCI <- lm.wt_pred$fit - (1.96*(lm.wt_pred$se.fit))
+lm.wt_pred$UCI <- lm.wt_pred$fit + (1.96*(lm.wt_pred$se.fit))
+
+## Can use predict to get a smooth continuous set of predicted values, or to fit predictions
+## To another test dataset
+## To fit values to other points in the original data's range, but that aren't the original data
+## First create a vector from each column in the dataframe
+## Run the model using the vectors and no data frame, save that (e.g. vec_mod)
+## Now create a new dataframe (Novel) with all the same columns as the vectors, and fill in values you
+## want to fit to. Then predict from the vec_mod model, with vec_mod, newdata=Novel
+
+
+## CI = +/- 1.96*se
+names(lm.wt_pred)
+anova(lm.wt)
+qqnorm(resid(lm.wt))
+qqline(resid(lm.wt))
+coef(lm.wt)
+library(effects)
+plot(allEffects(lm.wt)) ## requires 'effects' package
+
+ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(Sugar, value)) + 
+  geom_boxplot(aes(col=Photoperiod)) + my_theme
+
 
 ## Calculate amount of sugar consumed
 #conc$prop_sugar <- as.numeric(conc$Sugar_conc)
@@ -120,6 +159,7 @@ conc_2_good$Prop_sugar <- conc_2_good$Fed_sugarsoln_g/(conc_2_good$Fed_sugarsoln
 ## Subset just values from experimental test
 conc_8 <- conc[conc$Pre_test=="Test" & conc$Sugar_conc %in% c(0.00, 0.08),]
 conc_8$sugar_conc_factor<- factor(conc_8$Sugar_conc, levels=c(0, 0.08))
+conc_8 <- conc_8[conc_8$Sugar_mmt_good=="Y" & conc_8$Water_mmt_good=="Y",]
 conc_8$Prop_sugar <- conc_8$Fed_sugarsoln_g_perday/(conc_8$Fed_sugarsoln_g_perday+conc_8$Fed_water_g_perday)
 
 ### Histograms of sugar and water consumed to determine "reasonable" cut-offs
@@ -272,6 +312,7 @@ ggplot(conc_8[!is.na(conc_8$Prop_sugar) & conc_8$Pre_test=="Test",], aes(DaySinc
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
   ylab("Proportion sugar soln consumed") + xlab("Chamber") #+ xlab("Individual_SugarConc_ExptDay")
 
+levels(conc_8$Treatment)[levels(conc_8$Treatment)=="Long"] <- "Neutral"
 prop_sugar_boxplot <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(Treatment, Prop_sugar)) + my_theme + 
   geom_boxplot(aes(fill=Treatment)) + 
   facet_grid(.~sugar_conc_factor, scales="free_x") +
@@ -280,7 +321,7 @@ prop_sugar_boxplot <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(Treatment, 
   theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), legend.text = element_text(size=20),
         legend.key.height = unit(3,"line")) +
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
-  ylab("Proportion sugar soln consumed") + xlab("Chamber") #+ xlab("Individual_SugarConc_ExptDay")
+  ylab("Proportion sugar soln consumed") + xlab("Treatment") #+ xlab("Individual_SugarConc_ExptDay")
 prop_sugar_boxplot
 
 #conc_2_8$sugar_conc_factor <- factor(conc_2_8$sugar_conc_factor, levels = c(0.02,0,0.08))
@@ -391,7 +432,7 @@ ggplot(conc_8, aes(as.factor(Chamber), Prop_sugar)) + geom_boxplot(aes(fill=suga
 conc_8$Treatment <- droplevels(conc_8$Treatment)
 
 ## Lmer model of proportion of liquid consumed that was sugar solution
-mod_prop_sugar_full <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+Treatment+Sex + (1|Indiv) + DaySinceStart, 
+mod_prop_sugar_full <- lmer(Prop_sugar~-1+Animal_wt_g+sugar_conc_factor+Treatment+Sex + (1|Indiv) + DaySinceStart, 
                             data=conc_8[!is.na(conc_8$Prop_sugar),])
 summary(mod_prop_sugar_full)
 plot(mod_prop_sugar)
