@@ -17,8 +17,8 @@ setwd("E:\\Ex_Google_Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Ani
 
 ## Read in data files
 conc <- read.csv("SugarConcTest_weights_Expt_Sept15.csv")
-liver <- read.csv("Liver_fat.csv")
-liver_rescore <- read.csv("Liver_fat_AS.csv")
+#liver <- read.csv("Liver_fat.csv") # OLD, delete from rest of script
+#liver_rescore <- read.csv("Liver_fat_AS.csv") # OLD, delete from rest of script
 fatpad <- read.csv("Fat_pads.csv")
 weights <- read.csv("Animal_weights_forMassChange.csv")
 
@@ -54,7 +54,7 @@ ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(Age_death, value)) + f
 ggplot(m.weights[m.weights$variable=="Photoperiod_g",], aes(Photoperiod, value)) + 
   geom_boxplot(aes(fill=Photoperiod)) + 
   my_theme + xlab("Photoperiod treatment") + ylab("Mass change (g)") +
-  #scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(legend.key.height = unit(3,"line"))
 
 ## Switch high and non sugar order on x-axis
@@ -84,7 +84,7 @@ m.weights$Sugar <- as.factor(as.character(m.weights$Sugar))
  #                     data=m.weights[m.weights$variable=="Postsugar_g",]) 
 ## Using this for Shelby SICB poster
 lm.wt <- glm(value~-1+Photoperiod*Sugar, 
-                data=m.weights[m.weights$variable=="Postsugar_g",], family="gaussian") 
+                data=m.weights[m.weights$variable=="wk_euthanasia_g",], family="gaussian") 
 
 lm.wt$fitted.values ## These are not predictions; these are fitted values and se's or 95% CIs
 ## To bind back into dataframe
@@ -135,6 +135,7 @@ conc_2_8$sugar_conc_factor<- factor(conc_2_8$Sugar_conc, levels=c(0.00, 0.02, 0.
 conc_2_8 <- conc_2_8[conc_2_8$Sugar_mmt_good=="Y" & conc_2_8$Water_mmt_good=="Y",]
 conc_2_8$Prop_sugar <- conc_2_8$Fed_sugarsoln_g_perday/(conc_2_8$Fed_sugarsoln_g_perday+conc_2_8$Fed_water_g_perday)
 
+
 conc_2_8_sugar <- subset(conc_2_8, !is.na(Fed_sugarsoln_g_perday))
 conc_2_8_sugar <- conc_2_8_sugar[conc_2_8_sugar$Sugar_mmt_good=="Y",]
 
@@ -161,6 +162,8 @@ conc_8 <- conc[conc$Pre_test=="Test" & conc$Sugar_conc %in% c(0.00, 0.08),]
 conc_8$sugar_conc_factor<- factor(conc_8$Sugar_conc, levels=c(0, 0.08))
 conc_8 <- conc_8[conc_8$Sugar_mmt_good=="Y" & conc_8$Water_mmt_good=="Y",]
 conc_8$Prop_sugar <- conc_8$Fed_sugarsoln_g_perday/(conc_8$Fed_sugarsoln_g_perday+conc_8$Fed_water_g_perday)
+levels(conc_8$Treatment)[levels(conc_8$Treatment)=="Long"] <- "Neutral"
+
 
 ### Histograms of sugar and water consumed to determine "reasonable" cut-offs
 #ggplot(conc_8[!is.na(conc_8$Fed_sugarsoln_g),], aes(Fed_sugarsoln_g)) + geom_histogram(aes(fill=Sugar_mmt_good)) + 
@@ -186,7 +189,7 @@ sugar_g_2 <- ggplot(conc_2, aes(IndivSugarDay, Fed_sugar_amt_g)) +
   ylab("Quantity of Sugar consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
   ggtitle("2% sucrose")
 
-## Plot sugar consumption (quantity of sugar in grams) for 2% by tretament
+## Plot sugar consumption (quantity of sugar in grams) for 2% by treatment
 sugar_g_2 <- ggplot(conc_2_sugar, aes(IndivSugarDay, Fed_sugar_amt_g)) + 
   facet_grid(.~Treatment, scales="free_x") +
   my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
@@ -197,7 +200,7 @@ sugar_g_2 <- ggplot(conc_2_sugar, aes(IndivSugarDay, Fed_sugar_amt_g)) +
   ylab("Quantity of Sugar consumed (g)") + xlab("Individual_SugarConc_ExptDay") +
   ggtitle("2% sucrose")
 
-## Plot sugar soln consumption for 2% by tretament
+## Plot sugar soln consumption for 2% by treatment
 sugar_soln_g_2 <- ggplot(conc_2_sugar, aes(IndivSugarDay, Fed_sugarsoln_g)) + 
   facet_grid(.~Treatment, scales="free_x") +
   my_theme + geom_bar(stat="identity", aes(fill=Treatment)) + #ylim(0,75) +
@@ -303,6 +306,15 @@ prop_sugar <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(as.factor(Chamber),
   ylab("Proportion sugar soln consumed") + xlab("Chamber") #+ xlab("Individual_SugarConc_ExptDay")
 prop_sugar
 
+## Plot sugar consumption (quantity of sugar in grams) for 8% by treatment
+ggplot(conc_8_sugar, aes(Treatment, Fed_sugar_amt_g)) + 
+  facet_grid(.~sugar_conc_factor, scales="free_x") +
+  my_theme + geom_boxplot(aes(fill=Treatment)) + #ylim(0,75) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3,"line")) +
+  #guides(fill=guide_legend(title="Sugar \nconcentration")) + 
+  ylab("Quantity of sugar consumed (g)") + xlab("Photoperiod")
+
 
 ggplot(conc_8[!is.na(conc_8$Prop_sugar) & conc_8$Pre_test=="Test",], aes(DaySinceStart, Prop_sugar)) + my_theme + 
   geom_line(aes(col=Indiv), size=2) + facet_grid(.~sugar_conc_factor, scales="free_x") +
@@ -312,7 +324,7 @@ ggplot(conc_8[!is.na(conc_8$Prop_sugar) & conc_8$Pre_test=="Test",], aes(DaySinc
   #guides(fill=guide_legend(title="Sugar \nconcentration")) +
   ylab("Proportion sugar soln consumed") + xlab("Chamber") #+ xlab("Individual_SugarConc_ExptDay")
 
-levels(conc_8$Treatment)[levels(conc_8$Treatment)=="Long"] <- "Neutral"
+
 prop_sugar_boxplot <- ggplot(conc_8[!is.na(conc_8$Prop_sugar),], aes(Treatment, Prop_sugar)) + my_theme + 
   geom_boxplot(aes(fill=Treatment)) + 
   facet_grid(.~sugar_conc_factor, scales="free_x") +
