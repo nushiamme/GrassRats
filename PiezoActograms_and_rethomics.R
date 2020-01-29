@@ -14,6 +14,7 @@ library(sleepr) ## For sleep analyses
 library(dplyr) ## for missing times 
 library(DataCombine) # To insert rows at specific locations in dataframe
 library(viridis) # for beautiful colors!
+library(signal) ## for spectrogram function
 
 ## Set working directory
 setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
@@ -205,7 +206,7 @@ m.Activity2 <- processAct(m.Act2)
 head(m.Activity2)
 tail(m.Activity2)
 
-## Looking at non-shifted graphs, creating new 'shofted' 'time_diff' column
+## Looking at non-shifted graphs, creating new 'shifted' 'time_diff' column
 ## shifting 4 week short photoperiod animals 3 hours earlier; shifting HCS animals 3.5 hours earlier.
 m.Activity1$Time_diff_Treatment[m.Activity1$Treatment=="4WeekPhotoperiod" & m.Activity1$Chamber<12] <- 
   m.Activity1$Time_diff_Treatment[m.Activity1$Treatment=="4WeekPhotoperiod" & m.Activity1$Chamber<12]+(3*3600)
@@ -229,13 +230,13 @@ dt.act <- data.table::data.table(genAct, key='Chamber')
 names(dt.act)[names(dt.act) == 'Chamber'] <- 'id'
 
 #dt.act <- dt.act[order(dt.act$Chamber,dt.act$Date)]
-dt.meta <- data.table::data.table(meta_activ1, key="Chamber") ## Comment out ****
-#dt.meta <- data.table::data.table(meta_activ2, key="Chamber") ## Comment in ****
+#dt.meta <- data.table::data.table(meta_activ1, key="Chamber") ## Comment out ****
+dt.meta <- data.table::data.table(meta_activ2, key="Chamber") ## Comment in ****
 
 names(dt.meta)[names(dt.meta) == 'Chamber'] <- 'id'
 
 beh.act <-behavr(dt.act,metadata = dt.meta)
-beh.act$t <- beh.act$Time_diff2
+beh.act$t <- beh.act$Time_diff_Treatment
 #beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
 #summary(beh.act, detailed=T)
 #beh.act <- beh.act[order(beh.act$Chamber,beh.act$Date)]
@@ -280,7 +281,7 @@ head(beh.act)
 
 #beh.act <- beh.act[beh.act$PiezoAct != "NA",]
 ## Trying out a ggetho plot
-ggetho(beh.act, aes(x=t, y=id, z=PiezoAct)) + stat_tile_etho()
+ggetho(beh.act1, aes(x=t, y=id, z=PiezoAct)) + stat_tile_etho()
 
 ## Plotting indivs by mean activity levels
 ggetho(beh.act, aes(x=t, y=interaction(id, mean_activ, sep = " : "), z=PiezoAct)) +
@@ -303,13 +304,17 @@ ggetho(beh.act2[Treatment != "2WeekAcclimation",],
 
 
 ##Population level, all indivs; just the "expt" values; faceted by photoperiod, just 2wk
-p.pop_2wk <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="2WeekAcclimation",], 
+p.pop_2wk <- ggetho(beh.act2[beh.act2$Prep_expt=="expt" & beh.act2$Treatment=="2WeekAcclimation",], 
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + #facet_grid(Photoperiod~.) + 
-  my_theme + ggtitle("2 week Acclimation") + ylim(0,3) + 
-  theme(axis.text.x = element_blank(), legend.position = "none") + xlab("")
+  my_theme2 + ggtitle("2 week Acclimation") + ylim(0,3) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3, 'lines')) + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
+
 
 ##Population level, all indivs; just the "expt" values; faceted by photoperiod, just 4wk
-p.pop_4wk <- ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="4WeekPhotoperiod",], 
+p.pop_4wk <- ggetho(beh.act2[beh.act2$Prep_expt=="expt" & beh.act2$Treatment=="4WeekPhotoperiod",], 
        aes(x=t, y=PiezoAct, col=Photoperiod), time_wrap = hours(24)) + stat_pop_etho() + #facet_grid(Photoperiod~.) + 
   my_theme2 + ggtitle("4 week photoperiod") + ylim(0,3) +
   scale_color_manual(values = c("#F38BA8", "#23988aff")) +
@@ -329,15 +334,15 @@ ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="LowSucrose",],
 ##Population level, all indivs; just the "expt" values; faceted by photoperiod, just high sucrose
 sugar.labs <- c("No sugar", "8% sugar")
 names(sugar.labs) <- c("N", "Y")
-ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], 
+ggetho(beh.act2[beh.act2$Prep_expt=="expt" & beh.act2$Treatment=="HighSucrose",], 
                     aes(x=t, y=PiezoAct, col=Sugar), time_wrap = hours(24)) + stat_pop_etho() +
-  stat_summary(fun.data = "mean_cl_boot", colour = "grey30", alpha=0.3, size = 1) +
+  #stat_summary(fun.data = "mean_cl_boot", colour = "grey30", alpha=0.3, size = 1) +
   facet_grid(Photoperiod~., labeller = labeller(Sugar=sugar.labs)) + 
   my_theme2 + ggtitle("High Sucrose") + ylim(0,3) +
   scale_color_manual(values = c("#F38BA8", "#23988aff")) +
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(legend.key.height = unit(3, 'lines'), 
-        panel.grid.major.x = element_line(colour = "grey70", size=1)) + 
+        panel.grid.major.x = element_line(colour = "grey90", size=1)) + 
   xlab("Time (hours)") +
   scale_x_continuous(breaks =seq(0,(48*60*60),(1*60*60)), labels = seq(0,48,1))
 
@@ -346,9 +351,10 @@ grid.arrange(p.pop_2wk, p.pop_4wk,p.pop_HCS, ncol=1, nrow=3)
 ## With Shifted beh.act data frame
 ##Population level, all indivs; just the "expt" values; colored by photoperiod, just high sucrose
 # Viridis colors c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
-ggetho(beh.act_shift[beh.act_shift$Prep_expt=="expt" & beh.act_shift$Treatment=="HighSucrose",], 
+## Used to use beh.act_shift dataframe
+ggetho(beh.act1[beh.act1$Prep_expt=="expt" & beh.act1$Treatment=="HighSucrose",], 
                     aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24)) + 
-  stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  stat_pop_etho() + facet_grid(Photoperiod~.) + 
   my_theme2 + ggtitle("High Sucrose") + ylim(0,3) +
   scale_color_manual(values = c("#F38BA8", "#23988aff")) +
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
@@ -412,6 +418,21 @@ ggetho(beh.act1[beh.act1$Prep_expt=="expt" &
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) #+
   scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
 
+peri_dt <- periodogram(PiezoAct, beh.act1, period_range = C(5*60*60,34*60*60),
+                       FUN = ls_periodogram, resample_rate = 1/mins(5))
+
+ggperio(peri_dt, aes(period, power, colour=Photoperiod)) + 
+  stat_pop_etho()
+  
+spect_dt <- spectrogram_fun(beh.act1$PiezoAct, beh.act1,
+                        period_range = c(hours(6), hours(24)))
+  
+ggspectro(spect_dt) + 
+    stat_tile_etho() + 
+    scale_y_hours(name= "Period", log=T) + # log axis for period 
+    facet_wrap(~ condition) +
+    stat_ld_annotations()
+  
 
 ## Population graph single individual, short
 pop_short_indiv <- ggetho(beh.act[Treatment != "2WeekAcclimation" & beh.act$id=="2"], 
@@ -458,7 +479,7 @@ ggetho(beh.act[beh.act$Prep_expt=="expt" & beh.act$Treatment=="HighSucrose",], a
 
 
 ## Double-plotted actograms
-ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
+ggetho(beh.act1, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my_theme
 
 
 ## Double-plotted actograms by individual
@@ -468,8 +489,8 @@ ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot = 2) + stat_bar_tile_etho() + my
 ## VERY NICE For all individuals
 ## Double-plotted actograms by individual, tiles, viridis
 ## Only x-labels every 6 hours; 3 is too crammed
-ggetho(beh.act2, aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
-  facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
+ggetho(beh.act1, aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+  facet_wrap(~id) + #scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
   scale_fill_viridis()
 
 ## VERY NICE For all short photoperiod indivs
