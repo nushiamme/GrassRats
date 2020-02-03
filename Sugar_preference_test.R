@@ -392,7 +392,8 @@ ggplot(fatpad, aes(Treatment, Fat_pad_wt_g, fill=HCS)) + geom_boxplot(alpha=0.8)
 mod_fatpad <- lm(Fat_pad_wt_g~Treatment*HCS, fatpad)
 
 #### Sugar models
-mod_2_8_Day <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv)+(1|DaySinceStart)+Animal_wt_g, data=conc_2_8)
+mod_2_8_Day <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv)+(1|DaySinceStart)+
+                      Animal_wt_g, data=conc_2_8)
 
 mod_2_8 <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv), data=conc_2_8)
 

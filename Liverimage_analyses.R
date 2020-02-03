@@ -2,6 +2,7 @@
 ## Author: Anusha Shankar, nushiamme@gmail.com
 
 library(ggplot2)
+library(gridExtra)
 
 ## General functions
 my_theme <- theme_classic(base_size = 15) + 
@@ -24,18 +25,31 @@ m.liver_filter <- m.liver[m.liver$Use=="Y",]
 
 m.liver_filter$Sugar <- as.factor(as.character(m.liver_filter$Sugar))
 
-ggplot(m.liver_filter, aes(Photoperiod, PercentArea)) + geom_boxplot(aes(fill=Sugar)) + my_theme2 +
-  scale_fill_manual(values=c(100, 200)) +
-  theme(legend.key.height = unit(3, 'lines')) +
+liv_boxplot <-ggplot(m.liver_filter, aes(PhotoSugar, PercentArea)) + geom_boxplot(aes(fill=PhotoSugar)) + my_theme2 +
+  #scale_fill_manual(values=c(100, 200)) +
+  theme(legend.key.height = unit(3, 'lines')) + geom_point() +
   ylab("Percent area of liver with Macrosteatosis")
 
-ggplot(m.liver_filter, aes(Photoperiod, Count)) + geom_boxplot(aes(fill=Sugar)) + my_theme2 +
+m.liver_filter$Sugar_conc <- "NA"
+m.liver_filter$Sugar_conc[m.liver_filter$Sugar=="No sugar"] <- "None"
+m.liver_filter$Sugar_conc[m.liver_filter$Sugar=="High sugar"] <- "High"
+m.liver_filter$PhotoSugar <- paste0(m.liver_filter$Photoperiod, m.liver_filter$Sugar_conc)
+liv_density <- ggplot(m.liver_filter, aes(PercentArea)) + geom_density(aes(col=PhotoSugar)) + my_theme2 +
   scale_fill_manual(values=c(100, 200)) +
-  theme(legend.key.height = unit(3, 'lines')) +
+  theme(legend.key.height = unit(3, 'lines'), legend.position = "none") +
+  ylab("Percent area of liver with Macrosteatosis")
+
+
+ggplot(m.liver_filter, aes(Photoperiod, Count)) + geom_boxplot(aes(fill=PhotoSugar)) + my_theme2 +
+  #scale_fill_manual(values=c(100, 200)) + 
+  theme(legend.key.height = unit(3, 'lines')) + geom_point(aes(col=PhotoSugar)) +
   ylab("Number of Macrosteatotic vesicles")
+
+grid.arrange(liv_density, liv_boxplot, nrow=1, ncol=2)
 
 ggplot(m.liver_filter, aes(Photoperiod, AverageSize)) + geom_boxplot(aes(fill=Sugar)) + my_theme2 +
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(legend.key.height = unit(3, 'lines')) +
   ylab("Average size of Macrosteatotic vesicles (in^2)")
 
+lmer()
