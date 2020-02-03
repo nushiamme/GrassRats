@@ -191,8 +191,8 @@ genAct$Time_diff_Treatment <- genAct$Time_diff2 ## will shift this later
 
 genAct$Treatment <- factor(genAct$Treatment, 
                                levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
-anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "Chamber")] ## Comment out ****
-#anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "Chamber")] ## Comment in ****
+#anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "Chamber")] ## Comment out ****
+anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "Chamber")] ## Comment in ****
 m.Activity <- merge(genAct,anim_cham,by="Indiv")
 m.Activity <- m.Activity[order(m.Activity$Chamber, m.Activity$Date),]
 return(m.Activity)
@@ -424,7 +424,7 @@ peri_dt <- periodogram(PiezoAct, beh.act1, period_range = C(5*60*60,34*60*60),
 ggperio(peri_dt, aes(period, power, colour=Photoperiod)) + 
   stat_pop_etho()
   
-spect_dt <- spectrogram_fun(beh.act1$PiezoAct, beh.act1,
+spect_dt <- zeitgebr::spectrogram(beh.act2$PiezoAct, beh.act2,
                         period_range = c(hours(6), hours(24)))
   
 ggspectro(spect_dt) + 
