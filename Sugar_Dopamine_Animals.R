@@ -1,3 +1,9 @@
+## Sugar consumption for dopamine pump animals
+## Script started Feb 6, 2020
+## Contact: Anusha Shankar, nushiamme<at>gmail<dot>com
+
+
+
 ## Read in required packages
 require(plyr)
 require(ggplot2)
