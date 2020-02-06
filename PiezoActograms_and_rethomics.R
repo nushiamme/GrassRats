@@ -18,8 +18,9 @@ library(signal) ## for spectrogram function
 
 ## Set working directory
 setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
+setwd("E:\\Ex_Google_Drive\\Piezo_data\\Dopamine_for_rethomics")
 
-source("Spectrogram.R")
+#source("Spectrogram.R")
 
 ## Metadata file for rethomics behavr table
 meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_Expt.csv")

@@ -16,7 +16,7 @@ require(forcats) ## for fct_rev function
 setwd("E:\\Ex_Google_Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data")
 
 ## Read in data files
-conc <- read.csv("SugarConcTest_weights_Expt_Sept15.csv")
+conc <- read.csv("SugarConcTest_weights_05Feb2020.csv")
 #liver <- read.csv("Liver_fat.csv") # OLD, delete from rest of script
 #liver_rescore <- read.csv("Liver_fat_AS.csv") # OLD, delete from rest of script
 fatpad <- read.csv("Fat_pads.csv")
