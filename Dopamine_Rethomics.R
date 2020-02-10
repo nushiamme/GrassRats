@@ -2,8 +2,49 @@
 ## Script started Feb 6, 2020
 ## Contact: Anusha Shankar, nushiamme<at>gmail<dot>com
 
+#1 week pre, 1 week post, then expt
+
+## Timeline of dopamine expt
+## Females
+# 9/16/2019: started acclimation
+# 9/23/2019: Photoperiod treatment
+# 10/8/2019: on 2%
+# 10/14/2019: 8%
+# 10/22/2019: surgery G6, T38
+# 10/30/2019: DopLO for G6, T38
+# 11/1/2019: Saline for G6, T38
+# 11/4/2019: DopHI for G6, T38
+# 10/23/2019: Surgery T35, R31
+# 10/31/2019: DopLO for T35, R31
+# 11/2/2019: Saline for T35, R31
+# 11/5/2019: DopHI for T35, R31
+# 10/24/2019: Surgery T37, G7
+# 11/1/2019: DopHI for T37, G7
+# 11/3/2019: Saline for T37, G7
+# 11/6/2019: DopLO for T37, G7
+
+## Males
+# 10/24/2019: Male acclimation
+# 10/31/2019: Photoperiod treatment
+# 11/7/2019: on 2%
+# 11/13/2019: 8%
+# 11/19/2019: surgery R32, R33
+# 11/27/2019: DopLO for R32, R33
+# 11/29/2019: Saline for R32, R33
+# 12/2/2019: DopHI for R32, R33
+# 11/20/2019: Surgery GR43, G32
+# 11/28/2019: DopHI for GR43, G32
+# 11/30/2019: Saline for GR43, G32
+# 12/3/2019: DopLO for GR43, G32
+# 11/21/2019: Surgery T39, GR44
+# 11/29/2019: DopHI for T39, GR44
+# 12/1/2019: Saline for T39, GR44
+# 12/4/2019: DopLO for T39, GR44
+
+require(tidyverse)
 require(reshape2)
 require(ggplot2)
+library(lubridate)
 library(behavr)
 library(ggetho)
 library(zeitgebr) ## For periodogram and spectrogram
@@ -19,8 +60,7 @@ setwd("E:\\Ex_Google_Drive\\Piezo_data\\Dopamine_for_rethomics")
 ## Metadata file for rethomics behavr table
 meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_Expt.csv")
 
-meta_dop <- meta_full[meta_full$Phase==3,c("Indiv", "Sex", "Photoperiod", "Sugar", "ChamberF",
-                                           "ChamberMF", "ChamberM", "Phase")]
+meta_dop <- meta_full[meta_full$Phase==3,c("Indiv", "Sex", "Photoperiod", "Sugar", "ChamberMF","Phase")]
 m.Act <- read.csv(".\\Melted\\Melted_Dopamine_Activity.csv")
 
 ## General functions
@@ -47,8 +87,8 @@ Activ$File <- noquote(names(Activ))
 for(i in 1:(length(Activ)-1)) { 
   Activ[[i]]$Treatment <- 
     unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 3))
-  ## Splitting the file name to get IndivID, date, and time
-  Activ[[i]]$PhaseMF <- 
+      ## Splitting the file name to get IndivID, date, and time
+  Activ[[i]]$MF <- 
     unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 2))
   Activ[[i]]$FileDate <- 
     unlist(lapply(strsplit(as.character(Activ$File[i]), "_"), "[", 4))
@@ -65,17 +105,18 @@ for(i in 1:(length(Activ)-1)) {
     unlist(lapply(strsplit(as.character(Activ[[i]]$Time), ":"), "[", 1))
   Activ[[i]]$Minute <-
     unlist(lapply(strsplit(as.character(Activ[[i]]$Time), ":"), "[", 2))
-  if(Activ[[i]]$PhaseMF[1]=="F") {
+  if(Activ[[i]]$MF[1]=="F") {
     m.Activ[[i]] <- melt(Activ[[i]], id.vars= c("Day", "Month", "Year", "Time", "Hour", "Minute","Treatment", "PhaseMF"), 
                          measure.vars=c("G6", "T35", "T37", "T38", "R31", "G7"))
     names(m.Activ[[i]]) <- c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "PhaseMF", "Indiv", "PiezoAct")
+    
   }
-  if(Activ[[i]]$PhaseMF[1]=="MF") {
+  if(Activ[[i]]$MF[1]=="MF") {
     m.Activ[[i]] <- melt(Activ[[i]], id.vars= c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "PhaseMF"), 
                          measure.vars=c("G6", "T35", "T37", "T38", "R31", "G7", "R32", "GR43", "T39", "R33", "G32", "GR44"))
     names(m.Activ[[i]]) <- c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "PhaseMF", "Indiv", "PiezoAct")
   }
-  if(Activ[[i]]$PhaseMF[1]=="M") {
+  if(Activ[[i]]$MF[1]=="M") {
     m.Activ[[i]] <- melt(Activ[[i]], id.vars= c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "PhaseMF"), 
                          measure.vars=c("R32", "GR43", "T39", "R33", "G32", "GR44"))
     names(m.Activ[[i]]) <- c("Day", "Month", "Year", "Time", "Hour", "Minute", "Treatment", "PhaseMF", "Indiv", "PiezoAct")
@@ -98,6 +139,11 @@ head(m.Act)
 tail(m.Act)
 #m.Act <- m.Act[is.na(m.Act$Date),]
 
+## Make two separate data frames by sex
+## Add sex and chamber number columns to data from metadata file
+anim_cham <- meta_dop[,c("Indiv", "ChamberMF", "Sex")]
+m.Act <- merge(m.Act,anim_cham,by="Indiv")
+
 #### Write to csv ####
 write.csv(m.Act,"Melted\\Melted_Dopamine_Activity.csv", row.names=F)
 
@@ -110,11 +156,8 @@ m.Act$Date <- as.POSIXct(paste(paste(m.Act$Day2, m.Act$Month, m.Act$Year, sep="/
                                paste(m.Act$Hour2, m.Act$Minute, sep=":")), 
                          format = "%d/%m/%Y %H:%M", tz="America/Anchorage")
 
+## pull out first row of each day and check which dates are missing
 
-## Make two separate data frames by sex
-## Add sex and chamber number columns to data from metadata file
-anim_cham <- meta_dop[,c("Indiv", "ChamberMF", "Sex")]
-m.Act <- merge(m.Act,anim_cham,by="Indiv")
 m.ActM <- m.Act[m.Act$Sex=="M",]
 #m.Act1 <- m.Act1[order(m.Act1$Chamber, m.Act1$Date),]
 m.ActF <- m.Act[m.Act$Sex=="F",]
@@ -150,13 +193,20 @@ m.ActivityF <- processAct(m.ActF)
 
 m.Activity <- rbind(m.ActivityF, m.ActivityM)
 
+write.csv(m.Activity,"Melted\\Melted_Dopamine_Activity.csv", row.names=F)
+
 ## for behavr processing
 processBehvr <- function(genAct){
   dt.act <- data.table::data.table(genAct, key='ChamberMF')
   names(dt.act)[names(dt.act) == 'ChamberMF'] <- 'id'
   
   dt.meta <- data.table::data.table(meta_dop, key="ChamberMF")
-  
+  dt.meta$IndivSexPhotoperiod <- paste0(dt.meta$Indiv, "_",dt.meta$Sex, "_",dt.meta$Photoperiod)
+  dt.meta$IndivSexPhotoperiod <- factor(dt.meta$IndivSexPhotoperiod, 
+                                     levels=c("G6_F_Short", "T35_F_Short", "T37_F_Short",
+                                              "T38_F_Long","R31_F_Long", "G7_F_Long",
+                                              "R32_M_Short", "GR43_M_Short", "T39_M_Short",
+                                              "R33_M_Long", "G32_M_Long", "GR44_M_Long"))
   names(dt.meta)[names(dt.meta) == 'ChamberMF'] <- 'id'
   
   beh.act <-behavr(dt.act,metadata = dt.meta)
@@ -169,7 +219,7 @@ beh.act <- processBehvr(m.Activity)
 head(beh.act)
 
 ## Population plot
-ggetho(beh.act[beh.act$id==2,], 
+ggetho(beh.act[beh.act$id=="2",], 
        aes(x=t, y=PiezoAct, col=Photoperiod, fill=Photoperiod), time_wrap = hours(24)) +#, 
   #time_offset = hours(4)) + 
   stat_pop_etho() + #facet_grid(Treatment~.) + 
@@ -182,12 +232,12 @@ ggetho(beh.act[beh.act$id==2,],
 ## Actograms
 
 ##Not working
-ggetho(beh.act, aes(x=t, z=PiezoAct)) + stat_tile_etho() + my_theme + 
-  facet_wrap(~id) + 
+ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot=2) + stat_tile_etho() + my_theme + 
+  facet_wrap(~IndivSexPhotoperiod) + 
   #scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
   scale_fill_viridis()
 
-ggetho(beh.act[beh.act$id=="5",], aes(x=t, z=PiezoAct)) +
+ggetho(beh.act[beh.act$id=="5",], aes(x=t, z=PiezoAct), multiplot=2,summary_time_window = 60*5) +
  # stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),
   #                    outline = NA,l_duration = hours(12),phase = hours(6)) +
   stat_tile_etho() + #my_theme2 + theme(axis.text.y = element_text(size=15)) +
@@ -197,3 +247,11 @@ ggetho(beh.act[beh.act$id=="5",], aes(x=t, z=PiezoAct)) +
 
 ggetho(beh.act, aes(x=t, y=as.factor(id), z=PiezoAct)) + stat_tile_etho() + scale_fill_viridis()
 
+
+ggetho(beh.act[beh.act$Sex=="F",],aes(x=t, y=PiezoAct), time_wrap = hours(24)) + 
+  stat_pop_etho() + #facet_grid(Photoperiod~.) + 
+  my_theme2 #+ ggtitle("Low Sucrose") + ylim(0,3) +
+  scale_color_manual(values = c("#F38BA8", "#23988aff")) +
+  scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
+  theme(legend.key.height = unit(3, 'lines')) + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,(48*60*60),(1*60*60)), labels = seq(0,48,1))
