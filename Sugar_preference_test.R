@@ -15,6 +15,9 @@ require(multcomp)
 require(reshape)
 require(forcats) ## for fct_rev function
 
+##### TRY tabmodel() to summarize models, library(sjplot)
+##### library(eins) and specmeans emeans() calculates least squares marginal means
+
 ## Sew working directory
 setwd("E:\\Ex_Google_Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data")
 
