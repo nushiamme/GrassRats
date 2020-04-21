@@ -11,7 +11,8 @@
 ## end of the experiment and sequenced.
 
 require(ggplot2)
-
+library(tidyr) ## To reshape dataframe
+library(dplyr) ## To reshape dataframe
 
 ## Set working directory
 setwd("E://Ex_Google_Drive//Toshiba_desktop//Fairbanks//Research//GrassRats//Microbiome_Data//GRP_20191213_16S_qiime")
@@ -35,6 +36,18 @@ ggplot(ubiome_rarified, aes(D3_order, log(GR_Total))) + geom_boxplot() + my_them
   #scale_x_discrete(limits = rev(levels(ubiome_rarified$D3_order))) +
   theme(axis.text.x = element_text(angle=90,vjust=0.5, size=10))
 
-p <- ggplot(data = mydata, aes(x=reorder(shop, km_away), y=varieties, fill=fruit))+
-  geom_bar(stat="identity") + coord_flip()+scale_fill_brewer(palette="Accent")
-p
+
+
+dw <- read.table(header=T, text='
+                 sbj f1.avg f1.sd f2.avg f2.sd  blabla
+                 A   10    6     50     10      bA
+                 B   12    5     70     11      bB
+                 C   20    7     20     8       bC
+                 D   22    8     22     9       bD
+                 ')
+
+ubiome_rarified %>% 
+  gather(v, value, c(GRP009:GRP182,NegPlateA_F02:D3_order)) %>% 
+  separate(v, c("var", "col")) %>% 
+  arrange(D3_order) %>% 
+  spread(col, value)
