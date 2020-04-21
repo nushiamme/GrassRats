@@ -19,6 +19,8 @@ setwd("E://Ex_Google_Drive//Toshiba_desktop//Fairbanks//Research//GrassRats//Mic
 
 ## read in data
 ubiome_rarified <- read.csv("GRP_20191213.rarefied-class-feature-table.csv")
+meta <- read.csv("GRP_20191213.metadata_AS.csv")
+meta_litter <- read.csv("Meta_litter_parents.csv")
 
 # General functions ####
 ## Saving standard theme  
@@ -29,15 +31,28 @@ my_theme <- theme_classic(base_size = 30) +
 ## Theme with slightly smaller font
 my_theme2 <- my_theme + theme_classic(base_size = 15)
 
-ubiome_rarified$D3_order <- as.factor(reorder(ubiome_rarified$D3, ubiome_rarified$GR_Total, median))
+## Reordering D3 by abundance
+#ubiome_rarified$D3_order <- as.factor(reorder(ubiome_rarified$D3, ubiome_rarified$GR_Total, median))
 
-## Plots
-ggplot(ubiome_rarified, aes(D3_order, log(GR_Total))) + geom_boxplot() + my_theme +
-  #scale_x_discrete(limits = rev(levels(ubiome_rarified$D3_order))) +
-  theme(axis.text.x = element_text(angle=90,vjust=0.5, size=10))
+## Subsetting metadata to useful columns
+litterEndCol <- which(colnames(meta_litter)=="Percent_liver_fat")
+meta_litter <- meta_litter[,1:litterEndCol]
+metaEndCol <- which(colnames(meta)=="Sugar")
+mmeta <- meta[,1:metaEndCol]
+mmeta_litter <- merge(mmeta, meta_litter, by="GrassRat_ID")
 
 
 
+Startcol <- which(colnames(ubiome_rarified)=="GR_Total")
+Endcol <- which(colnames(ubiome_rarified)=="NegPlateB_G07")
+m.ubiome <- ubiome_rarified[,-c(Startcol:Endcol)] %>% ## using tidyr for melting
+  gather(SampleID, value, GRP009:GRP182)
+
+merge_ubiome<- merge(mmeta_litter, m.ubiome, by = "SampleID")
+head(merge_ubiome)
+
+
+## For learning how to structure 
 dw <- read.table(header=T, text='
                  sbj f1.avg f1.sd f2.avg f2.sd  blabla
                  A   10    6     50     10      bA
@@ -46,8 +61,24 @@ dw <- read.table(header=T, text='
                  D   22    8     22     9       bD
                  ')
 
-ubiome_rarified %>% 
-  gather(v, value, c(GRP009:GRP182,NegPlateA_F02:D3_order)) %>% 
+dw %>% 
+  gather(v, value, f1.avg:f2.sd) %>% 
   separate(v, c("var", "col")) %>% 
-  arrange(D3_order) %>% 
+  arrange(sbj) %>% 
   spread(col, value)
+
+  
+## Plots
+
+## Old
+ggplot(ubiome_rarified, aes(D3_order, log(GR_Total))) + geom_boxplot() + my_theme +
+    #scale_x_discrete(limits = rev(levels(ubiome_rarified$D3_order))) +
+    theme(axis.text.x = element_text(angle=90,vjust=0.5, size=10))
+
+Fam_by_litter <- ggplot(merge_ubiome[merge_ubiome$ExpTrial=="Int",], aes(fill=D4, y=value, x=GrassRat_ID)) + 
+  geom_bar(position="fill", stat="identity") + facet_grid(Daylength+Sugar~Litter, scales = "free")
+Fam_by_litter
+
+Fam_by_Parents <- ggplot(merge_ubiome[merge_ubiome$ExpTrial=="Int",], aes(fill=D4, y=value, x=GrassRat_ID)) + 
+  geom_bar(position="fill", stat="identity") + facet_grid(.~ParentPair+Daylength+Sugar, scales = "free")
+Fam_by_Parents
