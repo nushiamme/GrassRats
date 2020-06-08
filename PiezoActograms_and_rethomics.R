@@ -18,15 +18,17 @@ library(signal) ## for spectrogram function
 
 ## Set working directory
 setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
-setwd("E:\\Ex_Google_Drive\\Piezo_data\\Dopamine_for_rethomics")
+#setwd("E:\\Ex_Google_Drive\\Piezo_data\\Dopamine_for_rethomics")
 
 source("Spectrogram.R")
 
 ## Metadata file for rethomics behavr table
 meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_Expt.csv")
 
-meta_activ1 <- meta_full[meta_full$Phase==1,c("Indiv", "Sex", "Photoperiod", "Sugar", "Chamber", "Phase")]
-meta_activ2 <- meta_full[meta_full$Phase==2,c("Indiv", "Sex", "Photoperiod", "Sugar", "Chamber", "Phase")]
+meta_activ <- meta_full[c("Indiv", "Sex", "Photoperiod", "Sugar", "ChamberMF", "Phase")]
+
+meta_activ1 <- meta_full[meta_full$Phase==1,c("Indiv", "Sex", "Photoperiod", "Sugar", "ChamberMF", "Phase")]
+meta_activ2 <- meta_full[meta_full$Phase==2,c("Indiv", "Sex", "Photoperiod", "Sugar", "ChamberMF", "Phase")]
 
 
 m.Act <- read.csv(".\\Melted\\Melted_PiezoActivity_bothPhases_new.csv") 
@@ -40,6 +42,7 @@ my_theme <- theme_classic(base_size = 15) +
 
 my_theme2 <- theme_classic(base_size = 30) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
+
 
 #my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
 
@@ -106,7 +109,7 @@ head(m.Act)
 tail(m.Act)
 #m.Act <- m.Act[is.na(m.Act$Date),]
 
-#### Write to csv ####
+## Write to csv ##
 write.csv(m.Act,"Melted\\Melted_PiezoActivity_bothPhases_new.csv", row.names=F)
 
 
@@ -192,10 +195,11 @@ genAct$Time_diff_Treatment <- genAct$Time_diff2 ## will shift this later
 
 genAct$Treatment <- factor(genAct$Treatment, 
                                levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
-#anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "Chamber")] ## Comment out ****
-anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "Chamber")] ## Comment in ****
+anim_cham <- meta_full[c("Indiv", "ChamberMF")] ## For overall m.Act, comment in ****
+#anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "ChamberMF")] ## Comment out ****
+#anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "ChamberMF")] ## Comment in ****
 m.Activity <- merge(genAct,anim_cham,by="Indiv")
-m.Activity <- m.Activity[order(m.Activity$Chamber, m.Activity$Date),]
+m.Activity <- m.Activity[order(m.Activity$ChamberMF, m.Activity$Date),]
 return(m.Activity)
 }
 
@@ -206,6 +210,11 @@ head(m.Activity1)
 m.Activity2 <- processAct(m.Act2) 
 head(m.Activity2)
 tail(m.Activity2)
+
+## Run ProcessAct on m.Act file (both phases). Switch out line above before running
+m.Activity <- processAct(m.Act)
+head(m.Activity)
+
 
 ## Looking at non-shifted graphs, creating new 'shifted' 'time_diff' column
 ## shifting 4 week short photoperiod animals 3 hours earlier; shifting HCS animals 3.5 hours earlier.
@@ -227,14 +236,16 @@ m.Activity2$Time_diff_Treatment[m.Activity2$Treatment=="HighSucrose" & m.Activit
 
 ## for behavr processing
 processBehvr <- function(genAct){
-dt.act <- data.table::data.table(genAct, key='Chamber')
-names(dt.act)[names(dt.act) == 'Chamber'] <- 'id'
+dt.act <- data.table::data.table(genAct, key='ChamberMF')
+names(dt.act)[names(dt.act) == 'ChamberMF'] <- 'id'
 
 #dt.act <- dt.act[order(dt.act$Chamber,dt.act$Date)]
-#dt.meta <- data.table::data.table(meta_activ1, key="Chamber") ## Comment out ****
-dt.meta <- data.table::data.table(meta_activ2, key="Chamber") ## Comment in ****
+dt.meta <- data.table::data.table(meta_activ, key="ChamberMF") ## Comment in for overall file ****
 
-names(dt.meta)[names(dt.meta) == 'Chamber'] <- 'id'
+#dt.meta <- data.table::data.table(meta_activ1, key="ChamberMF") ## Comment out/in ****
+#dt.meta <- data.table::data.table(meta_activ2, key="Chamber") ## Comment in/out ****
+
+names(dt.meta)[names(dt.meta) == 'ChamberMF'] <- 'id'
 
 beh.act <-behavr(dt.act,metadata = dt.meta)
 beh.act$t <- beh.act$Time_diff_Treatment
@@ -250,6 +261,11 @@ head(beh.act1)
 ## Before running the next two lines switch starred comment out and in lines above & rerun processBehvr
 beh.act2 <- processBehvr(m.Activity2) 
 tail(beh.act2)
+
+## For both phases together; Before running the next two lines switch starred comment out and in lines above & rerun processBehvr
+beh.act <- processBehvr(m.Activity)
+head(beh.act)
+
 
 ## Shifted 't' column earlier by 4 hours,
 #just for !2wkacclim short photoperiod individuals, like subjective day
@@ -419,20 +435,38 @@ ggetho(beh.act1[beh.act1$Prep_expt=="expt" &
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) #+
   scale_x_continuous(breaks =seq(0,(48*60*60),(3*60*60)), labels = seq(0,48,3))
 
-peri_dt <- periodogram(PiezoAct, beh.act1, period_range = C(5*60*60,34*60*60),
+peri_dt1 <- periodogram(PiezoAct, beh.act1, period_range = c(5*60*60,34*60*60),
                        FUN = ls_periodogram, resample_rate = 1/mins(5))
 
-ggperio(peri_dt, aes(period, power, colour=Photoperiod)) + 
-  stat_pop_etho()
+peri_dt2 <- periodogram(PiezoAct, beh.act2, period_range = c(5*60*60,34*60*60),
+                       FUN = ls_periodogram, resample_rate = 1/mins(5))
+
+peri_dt <- periodogram(PiezoAct, beh.act, period_range = c(5*60*60,34*60*60),
+                       FUN = ls_periodogram, resample_rate = 1/mins(5))
+
+## Periodogram for all individuals (use peri_dt1 for phase 1 and peri_dt2 for phase 2 indivs alone)
+ggperio(peri_dt, aes(period, power, colour=Photoperiod)) + my_theme2 +
+  stat_pop_etho() + 
+  theme(panel.grid.major.y = element_line(size=.1, color="grey75"), 
+        axis.line = element_line(size=1),
+        strip.background = element_rect(size=1), legend.key.height = unit(3, 'lines'))
   
-spect_dt <- zeitgebr::spectrogram(beh.act2$PiezoAct, beh.act2,
+spect_dt1 <- zeitgebr::spectrogram(PiezoAct, beh.act1,
                         period_range = c(hours(6), hours(24)))
+
+spect_dt2 <- zeitgebr::spectrogram(PiezoAct, beh.act2,
+                                  period_range = c(hours(6), hours(24)))
+
+spect_dt <- zeitgebr::spectrogram(PiezoAct, beh.act,
+                                  period_range = c(hours(6), hours(24)))
   
-ggspectro(spect_dt) + 
+ggspectro(spect_dt1) + my_theme2 +
     stat_tile_etho() + 
     scale_y_hours(name= "Period", log=T) + # log axis for period 
-    facet_wrap(~ condition) +
+    facet_wrap( ~ Photoperiod) +
     stat_ld_annotations()
+
+
   
 
 ## Population graph single individual, short
@@ -494,17 +528,32 @@ ggetho(beh.act1, aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_th
   facet_wrap(~id) + #scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
   scale_fill_viridis()
 
-## VERY NICE For all short photoperiod indivs
+## VERY NICE For all short photoperiod indivs in phase 1
 ## Double-plotted actograms by individual, tiles, viridis
 ## Only x-labels every 6 hours; 3 is too crammed
-ggetho(beh.act[beh.act$id<13,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+ggetho(beh.act1[beh.act1$id<13,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
   facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
   scale_fill_viridis()
 
-## VERY NICE For all long photoperiod indivs
+## VERY NICE For all short photoperiod indivs in phase 2
 ## Double-plotted actograms by individual, tiles, viridis
 ## Only x-labels every 6 hours; 3 is too crammed
-ggetho(beh.act[beh.act$id>12,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+ggetho(beh.act[beh.act$id<12 & beh.act$Phase==2,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+  facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
+  scale_fill_viridis()
+
+## VERY NICE For all long photoperiod indivs in phase 1
+## Double-plotted actograms by individual, tiles, viridis
+## Only x-labels every 6 hours; 3 is too crammed
+ggetho(beh.act1[beh.act1$id>12,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
+  facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
+  scale_fill_viridis()
+
+
+## VERY NICE For all long photoperiod indivs in phase 2
+## Double-plotted actograms by individual, tiles, viridis
+## Only x-labels every 6 hours; 3 is too crammed
+ggetho(beh.act[beh.act$id>11 & beh.act$Phase==2,], aes(x=t, z=PiezoAct), multiplot = 2) + stat_tile_etho() + my_theme + 
   facet_wrap(~id) + scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +
   scale_fill_viridis()
 
@@ -554,6 +603,28 @@ ggetho(beh.act1[beh.act1$id=="11" & beh.act1$Treatment!="2WeekAcclimation",], ae
 ## For Cory
 ## OVERALL excluding 2 week acclim, viridis, Tiled, long photoperiod T13
 ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + 
+  theme(axis.text.y = element_text(size=15)) +
+  #theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## FOR REVIEW
+## OVERALL excluding 2 week acclim, viridis, Tiled, long photoperiod Chamber 13 phase 1
+ggetho(beh.act1[beh.act1$id=="13" & beh.act1$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + 
+  theme(axis.text.y = element_text(size=15)) +
+  #theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## FOR REVIEW
+## OVERALL excluding 2 week acclim, viridis, Tiled, short photoperiod Chamber 12 phase 1
+ggetho(beh.act1[beh.act1$id=="12" & beh.act1$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
   stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
   stat_tile_etho() + my_theme2 + 
   theme(axis.text.y = element_text(size=15)) +
