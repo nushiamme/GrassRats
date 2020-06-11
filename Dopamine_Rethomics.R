@@ -193,7 +193,7 @@ m.ActivityF <- processAct(m.ActF)
 
 m.Activity <- rbind(m.ActivityF, m.ActivityM)
 
-write.csv(m.Activity,"Melted\\Melted_Dopamine_Activity.csv", row.names=F)
+#write.csv(m.Activity,"Melted\\Melted_Dopamine_Activity.csv", row.names=F)
 
 ## for behavr processing
 processBehvr <- function(genAct){
@@ -230,8 +230,6 @@ ggetho(beh.act[beh.act$id=="2",],
 
 
 ## Actograms
-
-##Not working
 ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot=2) + stat_tile_etho() + my_theme + 
   facet_wrap(~IndivSexPhotoperiod) + 
   #scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) +

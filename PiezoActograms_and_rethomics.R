@@ -20,7 +20,7 @@ library(signal) ## for spectrogram function
 setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
 #setwd("E:\\Ex_Google_Drive\\Piezo_data\\Dopamine_for_rethomics")
 
-source("Spectrogram.R")
+#source("Spectrogram.R")
 
 ## Metadata file for rethomics behavr table
 meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_Expt.csv")
@@ -231,6 +231,13 @@ m.Activity2$Time_diff_Treatment[m.Activity2$Treatment=="4WeekPhotoperiod" & m.Ac
 m.Activity2$Time_diff_Treatment[m.Activity2$Treatment=="HighSucrose" & m.Activity2$Chamber<12] <- 
   m.Activity2$Time_diff_Treatment[m.Activity2$Treatment=="HighSucrose" & m.Activity2$Chamber<12]+(3.5*3600)
 
+### CHANGE THIS AFTER LOOKING AT PHASE SHIFT
+m.Activity$Time_diff_Treatment[m.Activity$Treatment=="4WeekPhotoperiod" & m.Activity$Chamber<12] <- 
+  m.Activity$Time_diff_Treatment[m.Activity$Treatment=="4WeekPhotoperiod" & m.Activity$Chamber<12]+(3*3600)
+
+m.Activity$Time_diff_Treatment[m.Activity$Treatment=="HighSucrose" & m.Activity$Chamber<12] <- 
+  m.Activity$Time_diff_Treatment[m.Activity$Treatment=="HighSucrose" & m.Activity$Chamber<12]+(3.5*3600)
+
 
 #m.Activity <- m.Activity[complete.cases(m.Activity),]
 
@@ -440,7 +447,6 @@ peri_dt1 <- periodogram(PiezoAct, beh.act1, period_range = c(5*60*60,34*60*60),
 
 peri_dt2 <- periodogram(PiezoAct, beh.act2, period_range = c(5*60*60,34*60*60),
                        FUN = ls_periodogram, resample_rate = 1/mins(5))
-
 peri_dt <- periodogram(PiezoAct, beh.act, period_range = c(5*60*60,34*60*60),
                        FUN = ls_periodogram, resample_rate = 1/mins(5))
 

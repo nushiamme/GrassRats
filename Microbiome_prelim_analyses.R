@@ -107,6 +107,9 @@ mmeta <- meta[,1:metaEndCol]
 mmeta_litter <- merge(mmeta, meta_litter, by="GrassRat_ID")
 
 
+#### REPEATED MEASURES for the 22 animals for the Phyla level ####
+## Liver adiposity and gut microbiome
+
 
 Startcol <- which(colnames(ubiome_rarified)=="GR_Total")
 Endcol <- which(colnames(ubiome_rarified)=="NegPlateB_G07")
