@@ -24,14 +24,20 @@ setwd("E://Ex_Google_Drive//Toshiba_desktop//Fairbanks//Research//GrassRats//Mic
 ## read in data
 ubiome_rarified <- read.csv("GRP_20191213.rarefied-class-feature-table.csv")
 meta <- read.csv("GRP_20191213.metadata_AS.csv")
+#meta <- read.csv("GRP_20191213.metadata_LitterFat.csv")
 meta_litter <- read.csv("Meta_litter_parents.csv")
-metadata <- read_csv("GRP_20191213.metadata.csv")
+metadata <- read.csv("GRP_20191213.metadata.csv")
+agg_liverfat <- read.csv("Agg_liverfat.csv")
 
 
 ## producing metadata file with liver fat and litter IDs for Devin
 #### Don't run unless needed ####
-litter_sub <- meta_litter[,1:7]
-mmeta_litter<- merge(meta, litter_sub,by.x = "MouseID", by.y = "GrassRat_ID", all.x = T)
+## Merging litter data including Phase 2, with meta_litter file
+meta_litter_bothphases <- merge(meta_litter, agg_liverfat, by.x = "GrassRat_ID", by.y = "ID")
+
+
+litter_sub <- meta_litter_bothphases[,c(1:6,13)]
+mmeta_litter<- merge(meta, litter_sub, by.x= "MouseID", by.y = "GrassRat_ID", all.x = T)
 mmeta_litter <- mmeta_litter[,-1]
 write.csv(mmeta_litter, "GRP_20191213.metadata_LitterFat.csv")
 write_tsv(mmeta_litter, "GRP_20191213.metadata_LitterFat.tsv")
