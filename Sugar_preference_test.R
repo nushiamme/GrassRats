@@ -15,11 +15,12 @@ require(multcomp)
 require(reshape)
 require(forcats) ## for fct_rev function
 
+
 ##### TRY tabmodel() to summarize models, library(sjplot)
 ##### library(eins) and specmeans emeans() calculates least squares marginal means
 
 ## Sew working directory
-setwd("E:\\Ex_Google_Drive\\Toshiba_desktop\\Fairbanks\\Research\\GrassRats\\Animal_data")
+setwd("E:\\Google Drive\\Anusha_personal\\Fairbanks\\Research\\GrassRats\\Animal_data")
 
 ## Read in data files
 conc <- read.csv("SugarConcTest_weights_05Feb2020.csv")
@@ -27,7 +28,6 @@ conc <- read.csv("SugarConcTest_weights_05Feb2020.csv")
 #liver_rescore <- read.csv("Liver_fat_AS.csv") # OLD, delete from rest of script
 fatpad <- read.csv("Fat_pads.csv")
 weights <- read.csv("Animal_weights_forMassChange.csv")
-
 
 
 #### General functions ####
@@ -520,9 +520,12 @@ weights$Photoperiod_g <- weights$Weight_presugar-weights$Weight_2wk
 weights$Postsugar_g <- weights$Weight_euthanasia-weights$Weight_presugar
 weights$wk_euthanasia_g <- weights$Weight_euthanasia-weights$Weight_2wk
 
-
-m.weights <- melt(weights, id.vars=c("Individual", "Photoperiod", "Sugar", "Age_death"), 
+m.weights <- melt(weights, id.vars=c("Individual", "Photoperiod", "Sugar", "Age_death", "Trial"), 
                   measure.vars=c("Photoperiod_g", "Postsugar_g", "wk_euthanasia_g"))
+
+m.weights2 <- melt(weights, id.vars=c("Individual", "Photoperiod", "Sugar", "Age_death", "Trial"), 
+                   measure.vars=c("Weight_start", "Weight_2wk", "Weight_presugar",
+                                  "Weight_euthanasia"))
 
 ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(Age_death, value)) + facet_grid(.~Sugar) +
   geom_point(aes(col=Photoperiod), size=3) + my_theme
@@ -541,14 +544,53 @@ ggplot(m.weights[m.weights$variable=="Photoperiod_g",], aes(Photoperiod, value))
 ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(fct_rev(Sugar), value)) + 
   geom_boxplot(aes(fill=Photoperiod)) + #geom_point(aes(col=Photoperiod)) + geom_text(aes(label=Individual))+
   my_theme + xlab("Sugar treatment") + ylab("Mass change (g)") +
+  #facet_grid(.~Trial) +
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(legend.key.height = unit(3,"line"))
 
 ggplot(m.weights[m.weights$variable=="wk_euthanasia_g",], aes(fct_rev(Sugar), value)) + 
   geom_boxplot(aes(fill=Photoperiod)) + #geom_point(aes(col=Photoperiod)) + geom_text(aes(label=Individual))+
   my_theme + xlab("Sugar treatment") + ylab("Mass change (g)") +
+  facet_grid(.~Trial) +
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(legend.key.height = unit(3,"line"))
+
+cols_exptphase <- c("grey60", "grey80", "yellow", "red", "red", "yellow", "black")
+#Plotting weights over the course of the experiment for all animals individually
+ggplot(m.weights2, aes(variable, value)) + my_theme + 
+  geom_line(aes(group=Individual), show.legend = F, size=1) + 
+  geom_point(aes(fill=variable), col="black", size=3, pch=21) +
+  facet_wrap(.~Individual, scales = "free_x") +
+  scale_fill_manual(values = cols_exptphase) +
+  theme(axis.text.x=element_blank(), legend.text = element_text(size=20),
+        legend.key.height = unit(3,"line")) +
+    #axis.text.x = element_text(angle=90, size=20, vjust=0.5), legend.text = element_text(size=20),
+     #   legend.key.height = unit(3,"line")) +
+  ylab("Mass") #+ xlab("Treatment")
+
+m.weights2$variable <- revalue(m.weights2$variable, c("Weight_start"="Start", "Weight_2wk"= "Acclim",
+                               "Weight_presugar"= "Photoperiod", "Weight_euthanasia"="Postsugar"))
+#Plotting weights over the course of the experiment for all animals by phase as lines
+ggplot(m.weights2, aes(variable, value)) + my_theme + 
+  geom_line(aes(group=Individual, col=Sugar), show.legend = F, size=1) + 
+  geom_point(aes(fill=Sugar), col="black", size=3, pch=21) +
+  facet_wrap(Trial~Photoperiod, scales = "free_x") +
+  scale_color_manual(values = c("grey60", "blue")) +
+  scale_fill_manual(values = c("grey60", "blue"),name = "Sugar") +
+  theme(axis.text.x = element_text(size=10), legend.text = element_text(size=20),
+     legend.key.height = unit(3,"line")) + 
+  #axis.text.x=element_blank(), legend.text = element_text(size=20),legend.key.height = unit(3,"line")) +
+  ylab("Mass") #+ xlab("Treatment")
+
+
+#Plotting weights over the course of the experiment for all animals by phase as boxplots
+ggplot(m.weights2, aes(variable, value)) + my_theme +
+  geom_boxplot(aes(fill=fct_rev(Sugar))) +
+  facet_wrap(Trial~Photoperiod, scales = "free_x") +
+  scale_fill_manual(values = c("grey60", "blue"), name = "Sugar") +
+  theme(axis.text.x = element_text(size=10), legend.text = element_text(size=20),
+        legend.key.height = unit(3,"line")) + 
+  ylab("Mass") #+ xlab("Treatment")
 
 m.weights$Photoperiod <- as.factor(as.character(m.weights$Photoperiod))
 
@@ -561,12 +603,22 @@ m.weights$Sugar <- as.factor(as.character(m.weights$Sugar))
 #                     data=m.weights[m.weights$variable=="Postsugar_g",]) 
 ## Using this for Shelby SICB poster
 lm.wt <- glm(value~-1+Photoperiod*Sugar, 
-             data=m.weights[m.weights$variable=="wk_euthanasia_g",], family="gaussian") 
+               data=m.weights[m.weights$variable=="wk_euthanasia_g",], family="gaussian") 
+
+m.weights2$time <- as.numeric(revalue(m.weights2$variable, c("Start"=1, "Acclim"=14, "Photoperiod"=42,"Postsugar"=67)))
+## New version of model including trial as random effect, Oct 1, 2020
+lm.wt_full <- lmer(value~-1+Photoperiod*Sugar + (1|time) + (1|Trial), 
+             data=m.weights2) 
+
+lm.wt_full_timefixed <- lmer(value~-1+Photoperiod*Sugar + time + (1|Trial) + (1|Individual), 
+                   data=m.weights2) 
+
 
 lm.wt$fitted.values ## These are not predictions; these are fitted values and se's or 95% CIs
 ## To bind back into dataframe
 cbind(m.weights[m.weights$variable=="Postsugar_g",],lm.wt$fitted.values) 
-summary(lm.wt)
+summary(lm.wt_full)
+summary(lm.wt_full_timefixed)
 predict.glm(lm.wt) ## For CIs/se's
 lm.wt_pred <- predict.glm(lm.wt, type="response", interval="confidence", se.fit=T) 
 lm.wt_pred$LCI <- lm.wt_pred$fit - (1.96*(lm.wt_pred$se.fit))
@@ -588,7 +640,8 @@ qqnorm(resid(lm.wt))
 qqline(resid(lm.wt))
 coef(lm.wt)
 library(effects)
-plot(allEffects(lm.wt)) ## requires 'effects' package
+plot(allEffects(lm.wt), main= "Change in mass by photoperiod and sugar",
+     cex.main=1.5, cex.lab=2, cex.axis=1) ## requires 'effects' package
 
 ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(Sugar, value)) + 
   geom_boxplot(aes(col=Photoperiod)) + my_theme
