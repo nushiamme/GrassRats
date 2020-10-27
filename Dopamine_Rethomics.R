@@ -238,14 +238,29 @@ ggetho(beh.act, aes(x=t, z=PiezoAct), multiplot=2) + stat_tile_etho() + my_theme
 ### FOR REVIEW, just G6 (Female), short, before surgery. Manually setting Time_diff to before surgery
 ggetho(beh.act[beh.act$Indiv=="G6" & beh.act$Time_diff<3070800 & beh.act$Time_diff>48600,], aes(x=t, z=PiezoAct), multiplot=2) + 
   stat_tile_etho() + my_theme2 + 
-  theme(axis.text.y = element_blank(), axis.title = element_text(family="Trebuchet MS")) +
-  scale_x_continuous(breaks =seq(0,(48*60*60),(2*60*60)), labels = seq(0,48,2)) + ##Time_diff<3200400
+  theme(axis.text.y = element_blank(), text = element_text(family="Trebuchet MS")) +
+  #scale_x_continuous(breaks =seq(0,(48*60*60),(2*60*60)), labels = seq(0,48,2)) + ##Time_diff<3200400
   ylab("Time") + scale_fill_viridis(name="Activity level")
 
 ### FOR REVIEW, just R31 (Female), long, before surgery. Manually setting Time_diff to before surgery
 ggetho(beh.act[beh.act$Indiv=="R31" & beh.act$Time_diff<3157200 & beh.act$Time_diff>48600,], aes(x=t, z=PiezoAct), multiplot=2) + 
   stat_tile_etho() + my_theme2 + 
-  theme(axis.text.y = element_blank()) +
+  theme(axis.text.y = element_blank(), text = element_text(family="Trebuchet MS")) +
+  #scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) + ##Time_diff<3200400
+  ylab("Time") + scale_fill_viridis(name="Activity level")
+
+##WITHOUT TEXT, for review
+### FOR REVIEW, just G6 (Female), short, before surgery. Manually setting Time_diff to before surgery
+ggetho(beh.act[beh.act$Indiv=="G6" & beh.act$Time_diff<3070800 & beh.act$Time_diff>48600,], aes(x=t, z=PiezoAct), multiplot=2) + 
+  stat_tile_etho() + my_theme2 + 
+  theme(text = element_blank()) +
+  #scale_x_continuous(breaks =seq(0,(48*60*60),(2*60*60)), labels = seq(0,48,2)) + ##Time_diff<3200400
+  ylab("Time") + scale_fill_viridis(name="Activity level")
+
+### FOR REVIEW, just R31 (Female), long, before surgery. Manually setting Time_diff to before surgery
+ggetho(beh.act[beh.act$Indiv=="R31" & beh.act$Time_diff<3157200 & beh.act$Time_diff>48600,], aes(x=t, z=PiezoAct), multiplot=2) + 
+  stat_tile_etho() + my_theme2 + 
+  theme(text = element_blank()) +
   #scale_x_continuous(breaks =seq(0,(48*60*60),(6*60*60)), labels = seq(0,48,6)) + ##Time_diff<3200400
   ylab("Time") + scale_fill_viridis(name="Activity level")
 
