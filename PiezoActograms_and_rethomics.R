@@ -6,7 +6,7 @@ require(reshape2)
 #require(biwavelet)
 #require(stringr) ## For padding with leading 0's
 
-require(ggplot2)
+library(ggplot2)
 library(behavr)
 library(ggetho)
 library(zeitgebr) ## For periodogram and spectrogram
@@ -15,15 +15,16 @@ library(dplyr) ## for missing times
 library(DataCombine) # To insert rows at specific locations in dataframe
 library(viridis) # for beautiful colors!
 library(signal) ## for spectrogram function
+library(here)
 
-## Set working directory
-setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
-#setwd("E:\\Ex_Google_Drive\\Piezo_data\\Dopamine_for_rethomics")
+
+
+#here("Piezo_data", "Dopamine_for_rethomics")
 
 #source("Spectrogram.R")
 
 ## Metadata file for rethomics behavr table
-meta_full <- read.csv("E:\\Ex_Google_Drive\\Piezo_data\\Meta_Expt.csv")
+meta_full <- read.csv(here("Piezo_data", "Meta_Expt.csv"))
 
 meta_activ <- meta_full[c("Indiv", "Sex", "Photoperiod", "Sugar", "ChamberMF", "Phase")]
 
@@ -31,7 +32,7 @@ meta_activ1 <- meta_full[meta_full$Phase==1,c("Indiv", "Sex", "Photoperiod", "Su
 meta_activ2 <- meta_full[meta_full$Phase==2,c("Indiv", "Sex", "Photoperiod", "Sugar", "ChamberMF", "Phase")]
 
 
-m.Act <- read.csv(".\\Melted\\Melted_PiezoActivity_bothPhases_new.csv") 
+m.Act <- read.csv(here("Piezo_data", "For_rethomics", "Melted", "Melted_PiezoActivity_bothPhases_new.csv"))
 
 ## Try to plot mean SB lengths per hour, like the rethomics population plot
 

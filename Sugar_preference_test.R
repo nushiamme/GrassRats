@@ -376,6 +376,12 @@ ggplot(fatpad, aes(Treatment, Fat_pad_wt_g, fill=HCS)) + geom_boxplot(alpha=0.8)
 mod_fatpad <- lm(Fat_pad_wt_g~Treatment*HCS, fatpad)
 
 #### Sugar models
+#### To do's Apr 20, 2021
+# High sugar, no sugar in big font within the graph area, without legend title. 
+# ylab: % macrosteatosis in liver
+# No sugar on left, high on right
+# Include % steatosis as number on the liver images 
+
 mod_2_8_Day <- lmer(Prop_sugar~sugar_conc_factor+Treatment+(1|Indiv)+(1|DaySinceStart)+
                       Animal_wt_g, data=conc_2_8)
 
