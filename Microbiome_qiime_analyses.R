@@ -179,22 +179,23 @@ uwunifrac<-read_qza(here::here("Microbiome_Data", "GRP_20191213_16S_qiime", "cor
 #The point does sort out with the other T9 samples in your latest graph, 
 #so that's a positive improvement.
 ## DONE 2. Leaving G16 fecal out from all plots
-## 3. Plot beta diversity: average unifrac distance 
+## 3. Plot beta diversity: average unifrac distance  - OPTIONAL depending on time
 #within treatment of Family 1 (or 2-4) at times A, B, C and then also 
 #calculate between treatment unifrac distance.
-## 4. Change blue/purple to something else
-## 5. Can I do the microbial group-specific analyses like here:?
+## DONE 4. Change blue/purple to something else
+## 5. Can I do the microbial group-specific analyses like here:
 # https://jeb.biologists.org/content/223/3/jeb212548.long
+##
 
-my_colors2 <- c("#efdb00", "#3d5887", "#032b43", "#a0b9c6", "#b24c63")
+# my_colors2 <- c("#efdb00", "#3d5887", "#032b43", "#a0b9c6", "#b24c63")
 my_colors3 <- c("#ca054d", "#ffd400", "#032b43", "#7b9e89", "#1c448e")
-my_colors4 <- c("#ca054d", "#ffd400", "#032b43", "#f75c03", "#1c448e")
+# my_colors4 <- c("#ca054d", "#ffd400", "#032b43", "#f75c03", "#1c448e")
 my_colors5 <- c("#004e64", "#ffba08", "#73a580", "#f786aa", "#685369")
-my_colors6 <- c("#004e64", "#ffba08", "#f7b2bd", "#c60f7b", "#bbc7a4")
-my_colors7 <- c("#ffe74c", "#508aa8", "#242f40", "#c60f7b", "#bbc7a4")
-my_colors8 <- c("#7f7caf", "#fcbf49", "#171738", "#f71735", "#c9e4ca")
-my_colors9 <- c("#5bba6f", "#297373", "#171738", "#9e4770", "#f8c630")
-my_colors10 <- c("#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51")
+# my_colors6 <- c("#004e64", "#ffba08", "#f7b2bd", "#c60f7b", "#bbc7a4")
+# my_colors7 <- c("#ffe74c", "#508aa8", "#242f40", "#c60f7b", "#bbc7a4")
+# my_colors8 <- c("#7f7caf", "#fcbf49", "#171738", "#f71735", "#c9e4ca")
+# my_colors9 <- c("#5bba6f", "#297373", "#171738", "#9e4770", "#f8c630")
+# my_colors10 <- c("#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51")
 
 ## Colors are parent pairs, size is alpha diversity
 uwunifrac$data$Vectors %>%
@@ -210,7 +211,7 @@ uwunifrac$data$Vectors %>%
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
   scale_size_continuous(range = c(1,12), name="Shannon Diversity") +
   #scale_color_viridis_d(name="ParentPair", end = .95) +
-  scale_color_manual(values=my_colors5) +
+  scale_color_manual(name="ParentPair", values=my_colors3) +
   facet_grid(.~Trial) +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
 #ggsave("PCoA.pdf", height=4, width=5, device="pdf") # save a PDF 3 inches by 4 inches
@@ -227,7 +228,8 @@ uwunifrac$data$Vectors %>%
   my_theme +
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
   scale_size_continuous(range = c(5,12), name="Shannon Diversity") +
-  scale_color_viridis_d(name="ParentPair", end = .9) +
+  #scale_color_viridis_d(name="ParentPair", end = .9) +
+  scale_color_manual(name="ParentPair", values=my_colors5) +
   facet_grid(.~Trial) +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
 
@@ -245,7 +247,8 @@ uwunifrac$data$Vectors %>%
   my_theme +
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
   #scale_size_continuous(range = c(5,12), name="Shannon Diversity") +
-  scale_color_viridis_d(name="ParentPair", end = .9) +
+  #scale_color_viridis_d(name="ParentPair", end = .9) +
+  scale_color_manual(name="ParentPair", values=my_colors5) +
   geom_text(aes(label=paste(GrassRat_ID, Sample, sep=",")), alpha=1, col='black') +
   #facet_grid(.~Trial) +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
@@ -261,12 +264,13 @@ uwunifrac$data$Vectors %>%
   filter(Type=="Fecal") %>%
   #filter(Trial==2) %>%
   ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(ParentPair))) +
-  geom_point(alpha=0.6, size=7) + #alpha controls transparency and helps when points are overlapping
+  geom_point(alpha=0.6, size=7, stroke=2) + #alpha controls transparency and helps when points are overlapping
   my_theme +
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
   #scale_size_continuous(range = c(5,12), name="Shannon Diversity") +
-  scale_color_viridis_d(name="ParentPair", end = .9) +
-  geom_text(aes(label=paste0("T", Trial)), alpha=1, col='black') +
+  #scale_color_viridis_d(name="ParentPair", end = .9) +
+  scale_color_manual(name="ParentPair", values=my_colors5) +
+  #geom_text(aes(label=paste0("T", Trial)), alpha=1, col='black') +
   #facet_grid(.~Trial) +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
 
@@ -280,12 +284,12 @@ uwunifrac$data$Vectors %>%
   filter(Type=="Fecal") %>%
   filter(Trial==2) %>%
   ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(ParentPair))) +
-  geom_point(alpha=0.6, size=7) + #alpha controls transparency and helps when points are overlapping
+  geom_point(alpha=0.6, size=7, stroke=2) + #alpha controls transparency and helps when points are overlapping
   my_theme +
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
   #scale_size_continuous(range = c(5,12), name="Shannon Diversity") +
-  scale_color_viridis_d(name="ParentPair", end = .9) +
-  geom_text(aes(label=paste(GrassRat_ID, Sample, sep=",")), alpha=1, col='black') +
+  scale_color_manual(name="ParentPair", values=my_colors5) +
+  #geom_text(aes(label=paste(GrassRat_ID, Sample, sep=",")), alpha=1, col='black') +
   #facet_grid(.~Trial) +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
 
@@ -297,12 +301,12 @@ uwunifrac$data$Vectors %>%
   filter(!is.na(ParentPair)) %>%
   filter(Type=="Int") %>%
   ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(ParentPair))) +
-  geom_point(alpha=0.6, size=7) + #alpha controls transparency and helps when points are overlapping
+  geom_point(alpha=0.6, size=7, stroke=2) + #alpha controls transparency and helps when points are overlapping
   my_theme +
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
   #geom_text(aes(label=paste(GrassRat_ID, ",", "T",Trial)), alpha=1, col='black') +
   #scale_size_continuous(range = c(5,12), name="Shannon Diversity") +
-  scale_color_viridis_d(name="ParentPair", end = .9) +
+  scale_color_manual(values= my_colors5, name="ParentPair") +
   #facet_grid(.~Trial) +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
 
@@ -331,12 +335,13 @@ uwunifrac$data$Vectors %>%
   filter(!is.na(PhotoSugar)) %>%
   filter(!is.na(ParentPair)) %>%
   #filter(Trial==1) %>%
-  ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(Type))) +
-  geom_point(alpha=0.6, size=7) + #alpha controls transparency and helps when points are overlapping
-  my_theme +
+  filter(!(GrassRat_ID=="G16" & Sample=="A")) %>%
+  ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(ParentPair))) +
+  geom_point(alpha=0.6, size=7, stroke=2) + #alpha controls transparency and helps when points are overlapping
+  my_theme + facet_grid(.~Type) +
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
   #scale_size_continuous(range = c(5,12), name="Shannon Diversity") +
-  scale_color_viridis_d(name="ParentPair", end = .9) +
+  scale_color_manual(name="Parent Pair", values=my_colors5) +
   #facet_grid(.~Trial) +
   #geom_text(aes(label=paste(GrassRat_ID, Sample, sep = ", ")), alpha=1, col='black') +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))

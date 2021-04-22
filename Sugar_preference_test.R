@@ -442,7 +442,8 @@ summary(mod_prop_sugar_full)
 plot(mod_prop_sugar)
 
 ## Cody: Sex is a fixed effect because random effects don't make sense until there's 6-7 factors
-mod_prop_sugar_full_noDay <- lmer(Prop_sugar~Animal_wt_g+sugar_conc_factor+Treatment+Sex + (1|Indiv), 
+mod_prop_sugar_full_noDay <- 
+  (Prop_sugar~Animal_wt_g+sugar_conc_factor+Treatment+Sex + (1|Indiv), 
                                   data=conc_8[!is.na(conc_8$Prop_sugar),])
 summary(mod_prop_sugar_full_noDay)
 
