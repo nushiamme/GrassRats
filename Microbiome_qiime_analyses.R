@@ -173,18 +173,28 @@ Qmeta %>%
 ##PCoA
 uwunifrac<-read_qza(here::here("Microbiome_Data", "GRP_20191213_16S_qiime", "core-metrics-results", "unweighted_unifrac_pcoa_results.qza"))
 
-####### TO DOOOOOO December 3, 2020 ####
+####### TO DO December 3, 2020 ####
 # DONE: 1. Devin: We did discover one error with the coding of T5 samples. 
 #Sample GRP021 is listed as GrassRat_ID=T5, but the TubeID=T9 L.int. 
 #The point does sort out with the other T9 samples in your latest graph, 
 #so that's a positive improvement.
-## 2. Plot beta diversity: average unifrac distance 
+## DONE 2. Leaving G16 fecal out from all plots
+## 3. Plot beta diversity: average unifrac distance 
 #within treatment of Family 1 (or 2-4) at times A, B, C and then also 
 #calculate between treatment unifrac distance.
-## 3. Change blue/purple to something else
-## 4. Can I do the microbial group-specific analyses like here:?
+## 4. Change blue/purple to something else
+## 5. Can I do the microbial group-specific analyses like here:?
 # https://jeb.biologists.org/content/223/3/jeb212548.long
 
+my_colors2 <- c("#efdb00", "#3d5887", "#032b43", "#a0b9c6", "#b24c63")
+my_colors3 <- c("#ca054d", "#ffd400", "#032b43", "#7b9e89", "#1c448e")
+my_colors4 <- c("#ca054d", "#ffd400", "#032b43", "#f75c03", "#1c448e")
+my_colors5 <- c("#004e64", "#ffba08", "#73a580", "#f786aa", "#685369")
+my_colors6 <- c("#004e64", "#ffba08", "#f7b2bd", "#c60f7b", "#bbc7a4")
+my_colors7 <- c("#ffe74c", "#508aa8", "#242f40", "#c60f7b", "#bbc7a4")
+my_colors8 <- c("#7f7caf", "#fcbf49", "#171738", "#f71735", "#c9e4ca")
+my_colors9 <- c("#5bba6f", "#297373", "#171738", "#9e4770", "#f8c630")
+my_colors10 <- c("#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51")
 
 ## Colors are parent pairs, size is alpha diversity
 uwunifrac$data$Vectors %>%
@@ -192,13 +202,15 @@ uwunifrac$data$Vectors %>%
   left_join(Qmeta, by="SampleID") %>%
   filter(!is.na(PhotoSugar)) %>%
   filter(!is.na(ParentPair)) %>%
+  filter(!(GrassRat_ID=="G16" & Sample=="A")) %>%
   #filter(Type=="Fecal") %>%
   ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(ParentPair), size=shannon_entropy)) +
-  geom_point(alpha=0.6) + #alpha controls transparency and helps when points are overlapping
+  geom_point(alpha=0.6, stroke=2) + #alpha controls transparency and helps when points are overlapping
   my_theme +
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
   scale_size_continuous(range = c(1,12), name="Shannon Diversity") +
-  scale_color_viridis_d(name="ParentPair", end = .95) +
+  #scale_color_viridis_d(name="ParentPair", end = .95) +
+  scale_color_manual(values=my_colors5) +
   facet_grid(.~Trial) +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
 #ggsave("PCoA.pdf", height=4, width=5, device="pdf") # save a PDF 3 inches by 4 inches
@@ -209,6 +221,7 @@ uwunifrac$data$Vectors %>%
   left_join(Qmeta, by="SampleID") %>%
   filter(!is.na(PhotoSugar)) %>%
   filter(!is.na(ParentPair)) %>%
+  filter(!(GrassRat_ID=="G16" & Sample=="A")) %>%
   ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(ParentPair), size=PercentArea_liver_fat)) +
   geom_point(alpha=0.6) + #alpha controls transparency and helps when points are overlapping
   my_theme +
@@ -224,7 +237,7 @@ uwunifrac$data$Vectors %>%
   left_join(Qmeta, by="SampleID") %>%
   filter(!is.na(PhotoSugar)) %>%
   filter(!is.na(ParentPair)) %>%
-  #filter(!(GrassRat_ID=="G16" & Sample=="A")) %>%
+  filter(!(GrassRat_ID=="G16" & Sample=="A")) %>%
   #filter(Type=="Fecal") %>%
   filter(Trial==1) %>%
   ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(ParentPair))) +
@@ -287,7 +300,7 @@ uwunifrac$data$Vectors %>%
   geom_point(alpha=0.6, size=7) + #alpha controls transparency and helps when points are overlapping
   my_theme +
   scale_shape_manual(values=c(17,2,19,1,18), name="PhotoSugar") + #see http://www.sthda.com/sthda/RDoc/figure/graphs/r-plot-pch-symbols-points-in-r.png for numeric shape codes
-  geom_text(aes(label=paste(GrassRat_ID, ",", "T",Trial)), alpha=1, col='black') +
+  #geom_text(aes(label=paste(GrassRat_ID, ",", "T",Trial)), alpha=1, col='black') +
   #scale_size_continuous(range = c(5,12), name="Shannon Diversity") +
   scale_color_viridis_d(name="ParentPair", end = .9) +
   #facet_grid(.~Trial) +
@@ -325,7 +338,7 @@ uwunifrac$data$Vectors %>%
   #scale_size_continuous(range = c(5,12), name="Shannon Diversity") +
   scale_color_viridis_d(name="ParentPair", end = .9) +
   #facet_grid(.~Trial) +
-  geom_text(aes(label=paste(GrassRat_ID, Sample, sep = ", ")), alpha=1, col='black') +
+  #geom_text(aes(label=paste(GrassRat_ID, Sample, sep = ", ")), alpha=1, col='black') +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
 
 ## Both trials
@@ -334,6 +347,7 @@ uwunifrac$data$Vectors %>%
   left_join(Qmeta, by="SampleID") %>%
   filter(!is.na(PhotoSugar)) %>%
   filter(!is.na(ParentPair)) %>%
+  filter(!(GrassRat_ID=="G16" & Sample=="A")) %>%
   #filter(Type=="Fecal") %>%
   ggplot(aes(x=PC1, y=PC2, shape=PhotoSugar, col=as.factor(ParentPair), size=shannon_entropy)) +
   geom_point(alpha=0.6) + #alpha controls transparency and helps when points are overlapping
@@ -342,6 +356,7 @@ uwunifrac$data$Vectors %>%
   scale_size_continuous(range = c(1,12), name="Shannon Diversity") +
   scale_color_viridis_d(name="ParentPair", end = .95) +
   facet_grid(.~Trial) +
+  #geom_text(aes(label=paste(GrassRat_ID, Sample, sep = ", ")), size=2, alpha=1, col='black') +
   guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=3)))
 #ggsave("PCoA.pdf", height=4, width=5, device="pdf") # save a PDF 3 inches by 4 inches
 
