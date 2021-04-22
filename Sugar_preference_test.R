@@ -5,29 +5,30 @@
 
 
 ## Read in required packages
-require(plyr)
-require(ggplot2)
-require(gridExtra)
-require(lme4)
-require(lmerTest)
-require(factoextra)
-require(multcomp)
-require(reshape)
-require(forcats) ## for fct_rev function
+library(plyr)
+library(ggplot2)
+library(gridExtra)
+library(lme4)
+library(lmerTest)
+library(factoextra)
+library(multcomp)
+library(reshape)
+library(forcats) ## for fct_rev function
+library(here)
 
 
 ##### TRY tabmodel() to summarize models, library(sjplot)
 ##### library(eins) and specmeans emeans() calculates least squares marginal means
 
-## Sew working directory
-setwd("E:\\Google Drive\\Anusha_personal\\Fairbanks\\Research\\GrassRats\\Animal_data")
+# ## Sew working directory
+# setwd("E:\\Google Drive\\Anusha_personal\\Fairbanks\\Research\\GrassRats\\Animal_data")
 
 ## Read in data files
-conc <- read.csv("SugarConcTest_weights_05Feb2020.csv")
+conc <- read.csv(here("Animal_data", "SugarConcTest_weights_05Feb2020.csv"))
 #liver <- read.csv("Liver_fat.csv") # OLD, delete from rest of script
 #liver_rescore <- read.csv("Liver_fat_AS.csv") # OLD, delete from rest of script
-fatpad <- read.csv("Fat_pads.csv")
-weights <- read.csv("Animal_weights_forMassChange.csv")
+fatpad <- read.csv(here("Animal_data", "Fat_pads.csv"))
+weights <- read.csv(here("Animal_data", "Animal_weights_forMassChange.csv"))
 
 
 #### General functions ####
@@ -516,9 +517,9 @@ mean(conc_sugar$Fed_sugarsoln_g[conc_sugar$Treatment=="Long" & conc_sugar$Sugar_
 #weights$Date <- as.POSIXct(paste(weights$Day, weights$Month, weights$Year, sep="/"), 
 #                         format = "%d/%m/%Y", tz="America/Anchorage")
 
-#weights$Photoperiod <- 0
-#weights$Photoperiod[weights$Room=="019D"] <- "Neutral"
-#weights$Photoperiod[weights$Room=="019F"] <- "Short"
+weights$Photoperiod <- 0
+weights$Photoperiod[weights$Room=="019D"] <- "Neutral"
+weights$Photoperiod[weights$Room=="019F"] <- "Short"
 weights$Photoperiod_g <- "NA"
 weights$Postsugar_g <- "NA"
 weights$wk_euthanasia_g <- "NA"
@@ -533,8 +534,21 @@ m.weights2 <- melt(weights, id.vars=c("Individual", "Photoperiod", "Sugar", "Age
                    measure.vars=c("Weight_start", "Weight_2wk", "Weight_presugar",
                                   "Weight_euthanasia"))
 
+m.weights2$variable <- revalue(m.weights2$variable, c("Weight_start"="Start", "Weight_2wk"= "Acclim",
+                                                      "Weight_presugar"= "Photoperiod", "Weight_euthanasia"="Postsugar"))
+
 ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(Age_death, value)) + facet_grid(.~Sugar) +
   geom_point(aes(col=Photoperiod), size=3) + my_theme
+
+
+
+####### TO DO Apr 2021 ####
+## body mass graph; point and se, lines connecting individuals; 
+## analyse as repeated measures mixed model. 
+## 2 levels of random effects, litter and individual.
+## Switch high and non sugar order on x-axis
+## Send all three plots, without geom_point and text
+## Mass change Euthanasia minus Pre-sugar (mass change over sugar treatment)
 
 ## Mass change Presugar minus 2 week acclim (mass change over 4 week photoperiod phase)
 ggplot(m.weights[m.weights$variable=="Photoperiod_g",], aes(Photoperiod, value)) + 
@@ -542,10 +556,6 @@ ggplot(m.weights[m.weights$variable=="Photoperiod_g",], aes(Photoperiod, value))
   my_theme + xlab("Photoperiod treatment") + ylab("Mass change (g)") +
   scale_fill_manual(values = c("#F38BA8", "#23988aff")) +
   theme(legend.key.height = unit(3,"line"))
-
-## Switch high and non sugar order on x-axis
-## Send all three plots, without geom_point and text
-## Mass change Euthanasia minus Pre-sugar (mass change over sugar treatment)
 
 ggplot(m.weights[m.weights$variable=="Postsugar_g",], aes(fct_rev(Sugar), value)) + 
   geom_boxplot(aes(fill=Photoperiod)) + #geom_point(aes(col=Photoperiod)) + geom_text(aes(label=Individual))+
@@ -574,19 +584,18 @@ ggplot(m.weights2, aes(variable, value)) + my_theme +
      #   legend.key.height = unit(3,"line")) +
   ylab("Mass") #+ xlab("Treatment")
 
-m.weights2$variable <- revalue(m.weights2$variable, c("Weight_start"="Start", "Weight_2wk"= "Acclim",
-                               "Weight_presugar"= "Photoperiod", "Weight_euthanasia"="Postsugar"))
+
 #Plotting weights over the course of the experiment for all animals by phase as lines
 ggplot(m.weights2, aes(variable, value)) + my_theme + 
   geom_line(aes(group=Individual, col=Sugar), show.legend = F, size=1) + 
   geom_point(aes(fill=Sugar), col="black", size=3, pch=21) +
-  facet_wrap(Trial~Photoperiod, scales = "free_x") +
+  facet_wrap(.~Photoperiod, scales = "free_x") +
   scale_color_manual(values = c("grey60", "blue")) +
   scale_fill_manual(values = c("grey60", "blue"),name = "Sugar") +
-  theme(axis.text.x = element_text(size=10), legend.text = element_text(size=20),
+  theme(axis.text.x = element_text(size=20), legend.text = element_text(size=20),
      legend.key.height = unit(3,"line")) + 
   #axis.text.x=element_blank(), legend.text = element_text(size=20),legend.key.height = unit(3,"line")) +
-  ylab("Mass") #+ xlab("Treatment")
+  ylab("Mass") + xlab("Time")
 
 
 #Plotting weights over the course of the experiment for all animals by phase as boxplots

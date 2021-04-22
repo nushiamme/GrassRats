@@ -33,18 +33,21 @@ my_theme <- theme_classic(base_size = 30) +
 my_theme2 <- theme_classic(base_size = 10) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
 
-# Part 1
+## Read in processed files
+merged_file <- read.table(here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "combined_otu_tax.tsv"))
+
+#### Part 1 - Don't need to re-run if reading in "combined_otu_tax.tsv") ####
 # title: Manipulate QIIME2 output in R
 # description: |
 #   Take in output from 1_qiime_part.sh and manipulate files in R
 # ---
 #library(here)
-in_path <- here("GRP_20191213_16S_qiime", "phyloseq")
-otu <- read.table(file = here("GRP_20191213_16S_qiime", "phyloseq", "otu_table.txt"), header = TRUE)
+in_path <- here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq")
+otu <- read.table(file = here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "otu_table.txt"), header = TRUE)
 head(otu)
 
 #	Read in taxonomy table
-tax	<- read.table(file = here("GRP_20191213_16S_qiime", "phyloseq", "taxonomy.tsv"), sep = '\t', header = TRUE)
+tax	<- read.table(file = here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "taxonomy.tsv"), sep = '\t', header = TRUE)
 head(tax)
 
 names(otu)[1] <- "OTUID"
@@ -57,8 +60,8 @@ head(merged_file)
 # Note: the number of rows should equal your shortest file length, drops taxonomy
 # for OTUs that don't exist in your OTU table
 
-# Output merged .txt file
-out_path <- here("GRP_20191213_16S_qiime", "phyloseq", "combined_otu_tax.tsv")
+# # Output merged .txt file
+out_path <- here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "combined_otu_tax.tsv")
 write.table(merged_file, file = out_path, sep = "\t", col.names = TRUE, row.names = FALSE)
 
 #######################
@@ -72,22 +75,26 @@ write.table(merged_file, file = out_path, sep = "\t", col.names = TRUE, row.name
 
 #######################
 
-# Part 2
+#### Part 2 ####
 
 # Read in OTU table
-otu_table_in <- read.csv(here("GRP_20191213_16S_qiime", "phyloseq", "otu_matrix.csv"), sep = ",", row.names = 1)
+otu_table_in <- read.csv(here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "otu_matrix.csv"), sep = ",", row.names = 1)
 otu_table_in <- as.matrix(otu_table_in)
 
 # Read in taxonomy
 # Separated by kingdom, phylum, class, order, family, genus, species
-taxonomy <- read.csv(here("GRP_20191213_16S_qiime", "phyloseq", "taxonomy.csv"), sep = ",", row.names = 1)
+taxonomy <- read.csv(here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "taxonomy.csv"), sep = ",", row.names = 1)
 taxonomy <- as.matrix(taxonomy)
 
 # Read in metadata
-metadata <- read.csv(here("GRP_20191213_16S_qiime", "phyloseq", "metadata.csv"), row.names = 1, fill=T)
+metadata <- read.csv(here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "metadata.csv"), row.names = 1, fill=T)
+## Found this error in labelling Dec 2020, correcting GrassRat_ID for GRP021 from T5 to T9
+## Did this manually for "metadata_cut_for_shannon.csv
+metadata$GrassRat_ID[metadata$TubeID=="T9 L.int"] <- "T9"
+
 
 # Read in tree
-phy_tree <- read_tree(here("GRP_20191213_16S_qiime", "phyloseq", "tree.nwk"))
+phy_tree <- read_tree(here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "tree.nwk"))
 
 # Import all as phyloseq objects
 OTU <- otu_table(otu_table_in, taxa_are_rows = TRUE)
@@ -107,13 +114,14 @@ sample_names(META)
 ps <- phyloseq(OTU, TAX, META, phy_tree)
 ps
 
-# Part 3
+#### Part 3: Plots ####
 ## From QIIME2R tutorial 
 #https://forum.qiime2.org/t/tutorial-integrating-qiime2-and-r-for-data-visualization-and-analysis-using-qiime2r/4121
 
-Qmeta <- read.csv(here::here("GRP_20191213_16S_qiime", "phyloseq", "metadata_cut_for_shannon.csv"), fill=T)
-shannon<-read_qza(here::here("GRP_20191213_16S_qiime", "core-metrics-results", "shannon_vector.qza"))
+Qmeta <- read.csv(here::here("Microbiome_Data", "GRP_20191213_16S_qiime", "phyloseq", "metadata_cut_for_shannon.csv"), fill=T)
+shannon <-read_qza(here::here("Microbiome_Data", "GRP_20191213_16S_qiime", "core-metrics-results", "shannon_vector.qza"))
 
+## Sanity check: Check for full overlap between metadata and shannon file
 shannon<-shannon$data %>% rownames_to_column("SampleID") 
 gplots::venn(list(metadata=Qmeta$SampleID, shannon=shannon$SampleID))
 
@@ -136,8 +144,8 @@ Qmeta %>%
   #filter(!is.na(shannon)) %>%
   #filter(!is.na(PhotoSugar)) %>%
   ggplot(aes(x=ParentPair, y=shannon_entropy, color=PhotoSugar)) +
-  stat_summary(geom="errorbar", fun.data=mean_se, width=0) +
-  stat_summary(geom="line", fun.data=mean_se) +
+  stat_summary(geom="errorbar", fun.data=mean_se, width=0, size=1) +
+  stat_summary(geom="line", fun.data=mean_se, size=1.2, alpha=0.8) +
   stat_summary(geom="point", fun.data=mean_se) +
   xlab("Parent") +
   ylab("Shannon Diversity") +
@@ -163,10 +171,10 @@ Qmeta %>%
 
 
 ##PCoA
-uwunifrac<-read_qza(here::here("GRP_20191213_16S_qiime", "core-metrics-results", "unweighted_unifrac_pcoa_results.qza"))
+uwunifrac<-read_qza(here::here("Microbiome_Data", "GRP_20191213_16S_qiime", "core-metrics-results", "unweighted_unifrac_pcoa_results.qza"))
 
 ####### TO DOOOOOO December 3, 2020 ####
-# 1. Devin: We did discover one error with the coding of T5 samples. 
+# DONE: 1. Devin: We did discover one error with the coding of T5 samples. 
 #Sample GRP021 is listed as GrassRat_ID=T5, but the TubeID=T9 L.int. 
 #The point does sort out with the other T9 samples in your latest graph, 
 #so that's a positive improvement.
@@ -176,6 +184,7 @@ uwunifrac<-read_qza(here::here("GRP_20191213_16S_qiime", "core-metrics-results",
 ## 3. Change blue/purple to something else
 ## 4. Can I do the microbial group-specific analyses like here:?
 # https://jeb.biologists.org/content/223/3/jeb212548.long
+
 
 ## Colors are parent pairs, size is alpha diversity
 uwunifrac$data$Vectors %>%
