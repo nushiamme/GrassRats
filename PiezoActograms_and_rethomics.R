@@ -6,7 +6,7 @@ require(reshape2)
 #require(biwavelet)
 #require(stringr) ## For padding with leading 0's
 
-library(ggplot2)
+require(ggplot2)
 library(behavr)
 library(ggetho)
 library(zeitgebr) ## For periodogram and spectrogram
@@ -17,9 +17,9 @@ library(viridis) # for beautiful colors!
 library(signal) ## for spectrogram function
 library(here)
 
-
-
-#here("Piezo_data", "Dopamine_for_rethomics")
+## Set working directory
+#setwd("E:\\Ex_Google_Drive\\Piezo_data\\For_rethomics")
+#setwd("E:\\Ex_Google_Drive\\Piezo_data\\Dopamine_for_rethomics")
 
 #source("Spectrogram.R")
 
@@ -32,7 +32,7 @@ meta_activ1 <- meta_full[meta_full$Phase==1,c("Indiv", "Sex", "Photoperiod", "Su
 meta_activ2 <- meta_full[meta_full$Phase==2,c("Indiv", "Sex", "Photoperiod", "Sugar", "ChamberMF", "Phase")]
 
 
-m.Act <- read.csv(here("Piezo_data", "For_rethomics", "Melted", "Melted_PiezoActivity_bothPhases_new.csv"))
+m.Act <- read.csv(here("Piezo_data", "For_rethomics", "Melted", "Melted_PiezoActivity_bothPhases_new.csv")) 
 
 ## Try to plot mean SB lengths per hour, like the rethomics population plot
 
@@ -173,35 +173,35 @@ m.Act2 <- m.Act[m.Act$Phase==2,]
 
 ## Process phase 1 and phase 2 files
 processAct <- function(genAct){
-## Calculate time difference between rows
-n <- length(genAct$Date)
-#genAct <- InsertRow(genAct, rep(NA,ncol(genAct)), 1)
-#genAct$Date[1] <- as.POSIXct(paste(paste(genAct$Day2[2], genAct$Month[2], genAct$Year[2], sep="/"), 
-                         # "00:00:01"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-head(genAct)
-genAct$Time_diff <- NA
-genAct$Time_diff[2:n] <- genAct$Date[2:n]-genAct$Date[1]
-genAct$Time_diff[1] <- 0
-head(genAct)
-
-## To make Time_diff column think 0 = midnight of the start date
-Day_start <- as.POSIXct(paste(paste(genAct$Day2[1], genAct$Month[1], genAct$Year[1], sep="/"), 
-                                   "00:00:00"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-time_diff_from_start <- as.numeric(60*60*(genAct$Date[1]- Day_start)) ## Convert hours to seconds
-
-genAct$Time_diff2 <- genAct$Time_diff+time_diff_from_start
-
-genAct$Time_diff_Treatment <- genAct$Time_diff2 ## will shift this later
-
-
-genAct$Treatment <- factor(genAct$Treatment, 
-                               levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
-anim_cham <- meta_full[c("Indiv", "ChamberMF")] ## For overall m.Act, comment in ****
-#anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "ChamberMF")] ## Comment out ****
-#anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "ChamberMF")] ## Comment in ****
-m.Activity <- merge(genAct,anim_cham,by="Indiv")
-m.Activity <- m.Activity[order(m.Activity$ChamberMF, m.Activity$Date),]
-return(m.Activity)
+  ## Calculate time difference between rows
+  n <- length(genAct$Date)
+  #genAct <- InsertRow(genAct, rep(NA,ncol(genAct)), 1)
+  #genAct$Date[1] <- as.POSIXct(paste(paste(genAct$Day2[2], genAct$Month[2], genAct$Year[2], sep="/"), 
+  # "00:00:01"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+  head(genAct)
+  genAct$Time_diff <- NA
+  genAct$Time_diff[2:n] <- genAct$Date[2:n]-genAct$Date[1]
+  genAct$Time_diff[1] <- 0
+  head(genAct)
+  
+  ## To make Time_diff column think 0 = midnight of the start date
+  Day_start <- as.POSIXct(paste(paste(genAct$Day2[1], genAct$Month[1], genAct$Year[1], sep="/"), 
+                                "00:00:00"), format = "%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+  time_diff_from_start <- as.numeric(60*60*(genAct$Date[1]- Day_start)) ## Convert hours to seconds
+  
+  genAct$Time_diff2 <- genAct$Time_diff+time_diff_from_start
+  
+  genAct$Time_diff_Treatment <- genAct$Time_diff2 ## will shift this later
+  
+  
+  genAct$Treatment <- factor(genAct$Treatment, 
+                             levels = c("2WeekAcclimation", "4WeekPhotoperiod", "LowSucrose", "HighSucrose"))
+  anim_cham <- meta_full[c("Indiv", "ChamberMF")] ## For overall m.Act, comment in ****
+  #anim_cham <- meta_full[meta_full$Phase==1, c("Indiv", "ChamberMF")] ## Comment out ****
+  #anim_cham <- meta_full[meta_full$Phase==2,c("Indiv", "ChamberMF")] ## Comment in ****
+  m.Activity <- merge(genAct,anim_cham,by="Indiv")
+  m.Activity <- m.Activity[order(m.Activity$ChamberMF, m.Activity$Date),]
+  return(m.Activity)
 }
 
 ## Before running line switch out the starred lines above, and rerun "processAct"
@@ -244,29 +244,30 @@ m.Activity$Time_diff_Treatment[m.Activity$Treatment=="HighSucrose" & m.Activity$
 
 ## for behavr processing
 processBehvr <- function(genAct){
-dt.act <- data.table::data.table(genAct, key='ChamberMF')
-names(dt.act)[names(dt.act) == 'ChamberMF'] <- 'id'
-
-#dt.act <- dt.act[order(dt.act$Chamber,dt.act$Date)]
-dt.meta <- data.table::data.table(meta_activ, key="ChamberMF") ## Comment in for overall file ****
-
-#dt.meta <- data.table::data.table(meta_activ1, key="ChamberMF") ## Comment out/in ****
-#dt.meta <- data.table::data.table(meta_activ2, key="Chamber") ## Comment in/out ****
-
-names(dt.meta)[names(dt.meta) == 'ChamberMF'] <- 'id'
-
-beh.act <-behavr(dt.act,metadata = dt.meta)
-beh.act$t <- beh.act$Time_diff_Treatment
-#beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
-#summary(beh.act, detailed=T)
-#beh.act <- beh.act[order(beh.act$Chamber,beh.act$Date)]
-return(beh.act)
+  dt.act <- data.table::data.table(genAct, key='ChamberMF')
+  names(dt.act)[names(dt.act) == 'ChamberMF'] <- 'id'
+  
+  # NOTE FROM BELOW ******
+  #dt.act <- dt.act[order(dt.act$Chamber,dt.act$Date)]
+  #dt.meta <- data.table::data.table(meta_activ, key="ChamberMF") ## Comment in for overall file ****
+  
+  #dt.meta <- data.table::data.table(meta_activ1, key="ChamberMF") ## Comment out/in ****
+  dt.meta <- data.table::data.table(meta_activ2, key="ChamberMF") ## Comment in/out ****
+  
+  names(dt.meta)[names(dt.meta) == 'ChamberMF'] <- 'id'
+  
+  beh.act <-behavr(dt.act,metadata = dt.meta)
+  beh.act$t <- beh.act$Time_diff_Treatment
+  #beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
+  #summary(beh.act, detailed=T)
+  #beh.act <- beh.act[order(beh.act$Chamber,beh.act$Date)]
+  return(beh.act)
 }
 
-## Before running the next two lines switch starred comment out and in lines above & rerun processBehvr
+## NOTE Before running the next two lines switch starred comment out and in lines above & rerun processBehvr
 beh.act1 <- processBehvr(m.Activity1)
 head(beh.act1)
-## Before running the next two lines switch starred comment out and in lines above & rerun processBehvr
+## NOTE Before running the next two lines switch starred comment out and in lines above & rerun processBehvr
 beh.act2 <- processBehvr(m.Activity2) 
 tail(beh.act2)
 
@@ -277,7 +278,9 @@ head(beh.act)
 
 ## Shifted 't' column earlier by 4 hours,
 #just for !2wkacclim short photoperiod individuals, like subjective day
-beh.act_shift <-behavr(dt.act,metadata = dt.meta)
+dt.act_all <- data.table::data.table(m.Activity, key='ChamberMF')
+dt.meta_all <- data.table::data.table(meta_activ, key="ChamberMF")
+beh.act_shift <-behavr(dt.act_all,metadata = dt.meta_all)
 beh.act_shift$t <- beh.act$Time_diff_Treatment
 #beh.act$t <- rep(seq(1,300*length(beh.act$Time[beh.act$id=="T13"]),by=300), times=length(unique(beh.act$id)))
 summary(beh.act_shift, detailed=T)
@@ -618,6 +621,18 @@ ggetho(beh.act[beh.act$id=="24" & beh.act$Treatment!="2WeekAcclimation",], aes(x
   scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
   scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
 
+
+## For sleep manuscript, Sept 7, 2022
+## OVERALL excluding 2 week acclim, viridis, Tiled, long photoperiod T13
+ggetho(beh.act[beh.act$id==22,], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + facet_grid(.~id) +
+  theme(axis.text.y = element_text(size=15)) +
+  #theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
 ## FOR REVIEW
 ## OVERALL excluding 2 week acclim, viridis, Tiled, long photoperiod Chamber 13 phase 1
 ggetho(beh.act1[beh.act1$id=="13" & beh.act1$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
@@ -632,6 +647,28 @@ ggetho(beh.act1[beh.act1$id=="13" & beh.act1$Treatment!="2WeekAcclimation",], ae
 ## FOR REVIEW
 ## OVERALL excluding 2 week acclim, viridis, Tiled, short photoperiod Chamber 12 phase 1
 ggetho(beh.act1[beh.act1$id=="12" & beh.act1$Treatment!="2WeekAcclimation",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + 
+  theme(axis.text.y = element_text(size=15)) +
+  #theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+
+## For Grass Rat sleep manuscript, August 23, 2022
+## OVERALL including 2 week acclim, viridis, Tiled, short photoperiod Chamber 12 phase 1
+ggetho(beh.act1[beh.act1$id=="12",], aes(x=t, z=PiezoAct), multiplot=2) +
+  stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
+  stat_tile_etho() + my_theme2 + 
+  theme(axis.text.y = element_text(size=15)) +
+  #theme(axis.text.y = element_blank()) +
+  #scale_fill_gradientn(colours = rev(terrain.colors(10))) +
+  scale_fill_viridis() + ylab("") + xlab("Time (hours)") +
+  scale_x_continuous(breaks =seq(0,172800,10800), labels = seq(0,48,3))
+
+## Trying one from Trial 2
+ggetho(beh.act1[beh.act2$Indiv=="2",], aes(x=t, z=PiezoAct), multiplot=2) +
   stat_ld_annotations(height=1, ld_colours = c('white', 'grey70'),outline = NA,l_duration = hours(12),phase = hours(6)) +
   stat_tile_etho() + my_theme2 + 
   theme(axis.text.y = element_text(size=15)) +
